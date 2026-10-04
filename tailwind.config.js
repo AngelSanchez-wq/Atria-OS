@@ -6,7 +6,8 @@ export default {
     extend: {
       colors: {
         bg: 'var(--bg)', card: 'var(--card)', ink: 'var(--ink)', muted: 'var(--muted)',
-        line: 'var(--line)', accent: 'var(--accent)', soft: 'var(--soft)', warm: 'var(--warm)',
+        line: 'var(--line)', accent: 'var(--accent)', 'accent-strong': 'var(--accent-strong)',
+        soft: 'var(--soft)', warm: 'var(--warm)', 'warm-ink': 'var(--warm-ink)',
       },
       fontFamily: {
         display: ['Fredoka', 'Nunito', 'system-ui', 'sans-serif'],

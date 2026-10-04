@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import App from './App';
+import { useSesion } from './store/sesion';
 
 vi.mock('framer-motion', async (importOriginal) => {
   const actual = await importOriginal<typeof import('framer-motion')>();
@@ -12,13 +13,14 @@ vi.mock('framer-motion', async (importOriginal) => {
 describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    useSesion.setState({ usuario: null });
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('muestra el encendido y luego el marcador de inicio de sesión', async () => {
+  it('muestra el encendido y luego la pantalla de inicio de sesión', async () => {
     render(<App />);
 
     expect(screen.getByText('Iniciando')).toBeInTheDocument();
@@ -27,6 +29,7 @@ describe('App', () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(screen.getByText('Pantalla de inicio de sesión')).toBeInTheDocument();
+    expect(screen.getByText('¿Quién eres?')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Mia' })).toBeInTheDocument();
   });
 });
