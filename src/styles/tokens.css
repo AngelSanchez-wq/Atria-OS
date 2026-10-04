@@ -1,0 +1,4 @@
+:root{--bg:#e8f5f9;--card:#ffffff;--ink:#1f3a44;--muted:#4f6e7a;--line:#c9e1e8;--accent:#4fb8d0;--accent-strong:#1f7a90;--soft:#ddf3f8;--warm:#f7e9a6;--warm-ink:#7a5f00;--warm-line:#e5c94f}
+[data-theme='dark']{--bg:#10222a;--card:#183039;--ink:#e4f3f7;--muted:#9dbbc6;--line:#2c4e5a;--accent-strong:#7fd3e6;--soft:#1f4350;--warm:#5a4e1a;--warm-ink:#f7e9a6}
+/* Tipografía: Fredoka 500/600 (títulos, nombre de app, saludo) · Nunito 400/700/800 (texto) */
+/* Radios: tarjetas 16px · chips y botones 999px · ventanas 12px · íconos 26% del lado */
