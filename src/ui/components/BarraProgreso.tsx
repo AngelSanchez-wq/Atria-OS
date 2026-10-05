@@ -6,6 +6,7 @@ type BarraProgresoProps = {
   color: ColorBarra;
   /** Texto para lectores de pantalla (aria-label). */
   etiqueta: string;
+  className?: string;
 };
 
 const CLASE_RELLENO: Record<ColorBarra, string> = {
@@ -13,7 +14,7 @@ const CLASE_RELLENO: Record<ColorBarra, string> = {
   calido: 'bg-warm',
 };
 
-export function BarraProgreso({ valor, color, etiqueta }: BarraProgresoProps) {
+export function BarraProgreso({ valor, color, etiqueta, className = 'w-[200px]' }: BarraProgresoProps) {
   const valorSeguro = Math.min(100, Math.max(0, Math.round(valor)));
 
   return (
@@ -23,7 +24,7 @@ export function BarraProgreso({ valor, color, etiqueta }: BarraProgresoProps) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={valorSeguro}
-      className="h-[3px] w-[200px] overflow-hidden rounded-full bg-line"
+      className={`h-[3px] overflow-hidden rounded-full bg-line ${className}`}
     >
       <div
         className={`h-full ${CLASE_RELLENO[color]}`}

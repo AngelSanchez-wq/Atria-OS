@@ -3,12 +3,14 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 type BotonProps = {
   children: ReactNode;
   deshabilitado?: boolean;
-  variante?: 'principal';
+  variante?: 'principal' | 'secundario';
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled' | 'children'>;
 
 const CLASES_VARIANTE: Record<NonNullable<BotonProps['variante']>, string> = {
   principal:
     'rounded-full bg-accent px-10 py-3 text-lg font-bold text-bg hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50',
+  secundario:
+    'rounded-full border-2 border-line px-10 py-3 text-lg font-bold text-muted hover:text-ink hover:border-muted bg-transparent disabled:cursor-not-allowed disabled:opacity-50',
 };
 
 export function Boton({

@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { PantallaEncendido } from './ui/boot/PantallaEncendido';
 import { PantallaLogin } from './ui/login/PantallaLogin';
 import { PantallaBienvenida } from './ui/welcome/PantallaBienvenida';
-import { BarraSistema } from './ui/systembar/BarraSistema';
+import { PantallaEscritorio } from './ui/desktop/PantallaEscritorio';
 import { useSesion } from './store/sesion';
-import { Tarea } from './kernel/types';
+import { useTareas } from './store/tareas';
+import { TAREAS_SEMILLA } from './kernel/tasks/tareas-semilla';
 
 export default function App() {
   const [encendidoTerminado, setEncendidoTerminado] = useState(false);
-  const [tareaActiva, setTareaActiva] = useState<Tarea | null>(null);
   const usuario = useSesion((s) => s.usuario);
   const ingresar = useSesion((s) => s.ingresar);
+  const tareaActiva = useTareas((s) => s.tareaActiva);
+  const empezarTarea = useTareas((s) => s.empezar);
 
   if (!encendidoTerminado) {
     return <PantallaEncendido onTerminar={() => setEncendidoTerminado(true)} />;
@@ -21,16 +23,16 @@ export default function App() {
   }
 
   if (!tareaActiva) {
-    return <PantallaBienvenida onEmpezar={setTareaActiva} />;
+    return (
+      <PantallaBienvenida 
+        onEmpezar={(tarea) => {
+          // Cargamos las demás tareas semilla como pendientes por ahora
+          const pendientes = TAREAS_SEMILLA.filter(t => t.id !== tarea.id);
+          empezarTarea(tarea, pendientes);
+        }} 
+      />
+    );
   }
 
-  return (
-    <div className="flex h-full w-full flex-col bg-bg">
-      {/* Marcador temporal: la barra se verá aquí hasta existir el escritorio. */}
-      <BarraSistema />
-      <main className="flex flex-1 items-center justify-center">
-        <p className="text-muted">Escritorio: pendiente ({tareaActiva.titulo})</p>
-      </main>
-    </div>
-  );
+  return <PantallaEscritorio />;
 }

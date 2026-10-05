@@ -64,6 +64,8 @@ describe('App', () => {
     });
 
     // 4. Escritorio
-    expect(screen.getByText(/Escritorio: pendiente/)).toBeInTheDocument();
+    // Comprobamos que esté la tarjeta grande y el Dock
+    expect(screen.getByRole('navigation', { name: 'Aplicaciones' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument();
   });
 });
