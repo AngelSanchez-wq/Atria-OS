@@ -6,7 +6,7 @@ describe('Dock', () => {
   it('muestra las aplicaciones y permite abrir una', () => {
     const onAbrir = vi.fn();
     render(<Dock onAbrirApp={onAbrir} />);
-    
+
     const nav = screen.getByRole('navigation', { name: 'Aplicaciones' });
     expect(nav).toBeInTheDocument();
 
@@ -15,10 +15,20 @@ describe('Dock', () => {
     expect(onAbrir).toHaveBeenCalledWith('focuspad');
   });
 
-  it('resalta la app activa', () => {
-    render(<Dock appActiva="timelapse" onAbrirApp={vi.fn()} />);
-    const boton = screen.getByRole('button', { name: 'TimeLapse' });
-    // Verificamos por la clase o estructura interna
-    expect(boton.className).toContain('bg-soft');
+  it('muestra el punto de app abierta y la etiqueta aria correspondiente', () => {
+    render(
+      <Dock
+        appsAbiertas={['focuspad', 'timelapse']}
+        appEnfocada="focuspad"
+        onAbrirApp={vi.fn()}
+      />
+    );
+
+    const botonAbierta = screen.getByRole('button', { name: 'FocusPad, abierta' });
+    expect(botonAbierta).toBeInTheDocument();
+    expect(botonAbierta.className).toContain('bg-soft');
+
+    const botonCerrada = screen.getByRole('button', { name: 'TagFS' });
+    expect(botonCerrada).toBeInTheDocument();
   });
 });

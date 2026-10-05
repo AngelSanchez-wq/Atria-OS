@@ -11,7 +11,6 @@ export function ContenedorVentanas() {
     focusPid,
     cerrar,
     minimizar,
-    restaurar,
     maximizar,
     enfocar,
     mover,
