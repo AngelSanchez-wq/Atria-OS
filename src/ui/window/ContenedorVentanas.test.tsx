@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ContenedorVentanas } from './ContenedorVentanas';
 import { useVentanas } from '../../store/ventanas';
 import { useProcesos } from '../../store/procesos';
+import { PROCESO_KERNEL_BASE } from '../../kernel/processes/constantes';
 
 describe('ContenedorVentanas', () => {
   beforeEach(() => {
@@ -11,16 +12,17 @@ describe('ContenedorVentanas', () => {
       focusPid: null,
       _contadorFoco: 0,
     });
-    useProcesos.setState({ procesos: [] });
+    useProcesos.setState({ procesos: [PROCESO_KERNEL_BASE] });
   });
 
-  it('renderiza ventanas abiertas y responde a los controles', () => {
-    useVentanas.getState().abrir('focuspad', 1);
-    useVentanas.getState().abrir('burble', 2);
+  it('renderiza ventanas abiertas, incluyendo el monitor de procesos', () => {
+    useVentanas.getState().abrir('monitor', 2);
+    useVentanas.getState().abrir('burble', 3);
 
     render(<ContenedorVentanas />);
 
-    expect(screen.getByRole('dialog', { name: 'FocusPad' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Monitor de procesos' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Monitor de procesos' })).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Burble' })).toBeInTheDocument();
     expect(screen.getByText('Esta app está en construcción')).toBeInTheDocument();
 

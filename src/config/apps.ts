@@ -13,6 +13,8 @@ export type InfoApp = {
   necesitaInternet?: boolean;
   /** Cómo abrir si el iframe falla (apps externas). */
   fallback?: FallbackApp;
+  /** Si true, la app solo es visible y accesible para administradores. */
+  soloAdmin?: boolean;
 };
 
 // ─── URLs como constantes con nombre ────────────────────────────────────────
@@ -59,5 +61,11 @@ export const APPS: Record<AppId, InfoApp> = {
     nombre: 'Ambient',
     rutaLogo: 'icons/ambient.svg',
     modo: 'interna',
+  },
+  monitor: {
+    nombre: 'Monitor de procesos',
+    rutaLogo: 'icons/monitor.svg',
+    modo: 'interna',
+    soloAdmin: true,
   },
 };

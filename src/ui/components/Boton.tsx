@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 type BotonProps = {
   children: ReactNode;
@@ -13,16 +13,20 @@ const CLASES_VARIANTE: Record<NonNullable<BotonProps['variante']>, string> = {
     'rounded-full border-2 border-line px-10 py-3 text-lg font-bold text-muted hover:text-ink hover:border-muted bg-transparent disabled:cursor-not-allowed disabled:opacity-50',
 };
 
-export function Boton({
-  children,
-  deshabilitado = false,
-  variante = 'principal',
-  type = 'button',
-  className = '',
-  ...rest
-}: BotonProps) {
+export const Boton = forwardRef<HTMLButtonElement, BotonProps>(function Boton(
+  {
+    children,
+    deshabilitado = false,
+    variante = 'principal',
+    type = 'button',
+    className = '',
+    ...rest
+  },
+  ref
+) {
   return (
     <button
+      ref={ref}
       type={type}
       disabled={deshabilitado}
       className={[
@@ -37,4 +41,4 @@ export function Boton({
       {children}
     </button>
   );
-}
+});

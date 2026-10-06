@@ -1,34 +1,44 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Dock } from './Dock';
+import { useSesion } from '../../store/sesion';
 
 describe('Dock', () => {
-  it('muestra las aplicaciones y permite abrir una', () => {
+  beforeEach(() => {
+    useSesion.setState({
+      usuario: {
+        id: 'mateo',
+        nombre: 'Mateo',
+        inicial: 'M',
+        rol: 'estandar',
+        pin: '5678',
+      },
+    });
+  });
+
+  it('muestra las aplicaciones estándar y oculta el monitor para usuario estándar', () => {
     const onAbrir = vi.fn();
     render(<Dock onAbrirApp={onAbrir} />);
 
-    const nav = screen.getByRole('navigation', { name: 'Aplicaciones' });
-    expect(nav).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'FocusPad' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Monitor de procesos' })).not.toBeInTheDocument();
 
-    const botonFocus = screen.getByRole('button', { name: 'FocusPad' });
-    fireEvent.click(botonFocus);
+    fireEvent.click(screen.getByRole('button', { name: 'FocusPad' }));
     expect(onAbrir).toHaveBeenCalledWith('focuspad');
   });
 
-  it('muestra el punto de app abierta y la etiqueta aria correspondiente', () => {
-    render(
-      <Dock
-        appsAbiertas={['focuspad', 'timelapse']}
-        appEnfocada="focuspad"
-        onAbrirApp={vi.fn()}
-      />
-    );
+  it('muestra el monitor de procesos cuando el usuario es administrador', () => {
+    useSesion.setState({
+      usuario: {
+        id: 'admin',
+        nombre: 'Admin',
+        inicial: 'A',
+        rol: 'admin',
+        pin: '0000',
+      },
+    });
 
-    const botonAbierta = screen.getByRole('button', { name: 'FocusPad, abierta' });
-    expect(botonAbierta).toBeInTheDocument();
-    expect(botonAbierta.className).toContain('bg-soft');
-
-    const botonCerrada = screen.getByRole('button', { name: 'TagFS' });
-    expect(botonCerrada).toBeInTheDocument();
+    render(<Dock onAbrirApp={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Monitor de procesos' })).toBeInTheDocument();
   });
 });

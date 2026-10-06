@@ -4,6 +4,7 @@ import { APPS } from '../../config/apps';
 import { Ventana } from './Ventana';
 import { IframeApp } from './IframeApp';
 import { MarcadorApp } from './MarcadorApp';
+import { MonitorProcesos } from '../monitor/MonitorProcesos';
 
 export function ContenedorVentanas() {
   const {
@@ -49,7 +50,9 @@ export function ContenedorVentanas() {
               onCerrar={() => manejarCerrar(ventana.id, ventana.pid)}
               onMover={(x, y) => mover(ventana.id, x, y)}
             >
-              {info.modo === 'ventana' && info.url ? (
+              {ventana.appId === 'monitor' ? (
+                <MonitorProcesos />
+              ) : info.modo === 'ventana' && info.url ? (
                 <IframeApp url={info.url} nombreApp={info.nombre} />
               ) : (
                 <MarcadorApp appId={ventana.appId} />

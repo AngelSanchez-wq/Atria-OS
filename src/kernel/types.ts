@@ -8,7 +8,13 @@ export type Usuario = {
   pin: string;
 };
 
-export type AppId = 'focuspad' | 'timelapse' | 'tagfs' | 'burble' | 'ambient';
+export type AppId =
+  | 'focuspad'
+  | 'timelapse'
+  | 'tagfs'
+  | 'burble'
+  | 'ambient'
+  | 'monitor';
 
 export type Tarea = {
   id: string;
