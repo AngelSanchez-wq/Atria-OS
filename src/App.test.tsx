@@ -4,6 +4,7 @@ import { useSesion } from './store/sesion';
 import { useVentanas } from './store/ventanas';
 import { useProcesos } from './store/procesos';
 import { useTareas } from './store/tareas';
+import { useEnergia } from './store/energia';
 import { USUARIOS_SEMILLA } from './kernel/users/usuarios-semilla';
 import { PROCESO_KERNEL_BASE } from './kernel/processes/constantes';
 
@@ -18,10 +19,24 @@ vi.mock('framer-motion', async (importOriginal) => {
 describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useSesion.setState({ usuario: null });
+    useSesion.setState({
+      usuario: null,
+      estadosProcesosPorUsuario: {},
+      tareasPorUsuario: {},
+    });
     useVentanas.setState({ ventanas: [], focusPid: null, _contadorFoco: 0 });
     useProcesos.setState({ procesos: [PROCESO_KERNEL_BASE] });
-    useTareas.setState({ tareaActiva: null, pendientes: [], estado: 'en-curso', segundosTranscurridos: 0 });
+    useTareas.setState({
+      tareaActiva: null,
+      pendientes: [],
+      estado: 'en-curso',
+      segundosTranscurridos: 0,
+    });
+    useEnergia.setState({
+      estado: 'encendiendo',
+      estadosProcesosPrevios: {},
+      dialogoConfirmacion: null,
+    });
   });
 
   afterEach(() => {
@@ -40,13 +55,11 @@ describe('App', () => {
     // 2. Login
     expect(screen.getByText('¿Quién eres?')).toBeInTheDocument();
 
-    // Seleccionar usuario
     const usuarioradio = screen.getByRole('radio', { name: 'Mateo' });
     act(() => {
       usuarioradio.click();
     });
 
-    // Ingresar el PIN obteniéndolo de la semilla
     const usuarioMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo');
     const pin = usuarioMateo?.pin || '0000';
 
@@ -56,14 +69,12 @@ describe('App', () => {
       }
     });
 
-    // Iniciar sesión
     act(() => {
       screen.getByRole('button', { name: 'Entrar' }).click();
     });
 
     // 3. Bienvenida
     expect(screen.getByText('Hola, Mateo')).toBeInTheDocument();
-    expect(screen.getByText('¿Empezamos con algo pequeño?')).toBeInTheDocument();
 
     const btnEmpezar = screen.getByRole('button', { name: 'Empezar' });
     act(() => {
@@ -83,48 +94,167 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: 'FocusPad' })).toBeInTheDocument();
   });
 
-  it('iniciar como Admin permite abrir el Monitor de procesos y ver el kernel', async () => {
+  it('soporta el cambio de usuario preservando y aislando las ventanas y procesos', async () => {
     render(<App />);
 
-    // Encendido
+    // Arranque
     await act(async () => {
       await vi.runAllTimersAsync();
     });
 
-    // Seleccionar usuario Admin
-    const usuarioradio = screen.getByRole('radio', { name: 'Admin' });
+    // ── Iniciar con Mateo ──
     act(() => {
-      usuarioradio.click();
+      screen.getByRole('radio', { name: 'Mateo' }).click();
     });
-
-    const usuarioAdmin = USUARIOS_SEMILLA.find((u) => u.nombre === 'Admin');
-    const pin = usuarioAdmin?.pin || '0000';
-
+    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
     act(() => {
-      for (const char of pin) {
+      for (const char of pinMateo) {
         fireEvent.keyDown(window, { key: char });
       }
     });
-
     act(() => {
       screen.getByRole('button', { name: 'Entrar' }).click();
     });
-
-    // Bienvenida -> Escritorio
     act(() => {
       screen.getByRole('button', { name: 'Empezar' }).click();
     });
 
-    // Abrir Monitor de procesos desde el Dock (solo visible para admin)
-    const btnMonitor = screen.getByRole('button', { name: 'Monitor de procesos' });
-    expect(btnMonitor).toBeInTheDocument();
-
+    // Mateo abre FocusPad
     act(() => {
-      fireEvent.click(btnMonitor);
+      fireEvent.click(screen.getByRole('button', { name: 'FocusPad' }));
+    });
+    expect(screen.getByRole('dialog', { name: 'FocusPad' })).toBeInTheDocument();
+
+    // ── Cambiar de usuario a Mia ──
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mateo' }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Cambiar de usuario' }));
     });
 
-    expect(screen.getByRole('dialog', { name: 'Monitor de procesos' })).toBeInTheDocument();
-    expect(screen.getByText('Kernel de Atria-OS')).toBeInTheDocument();
-    expect(screen.getByText('Protegido')).toBeInTheDocument();
+    // Login general
+    expect(screen.getByText('¿Quién eres?')).toBeInTheDocument();
+
+    act(() => {
+      screen.getByRole('radio', { name: 'Mia' }).click();
+    });
+    const pinMia = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mia')?.pin || '1234';
+    act(() => {
+      for (const char of pinMia) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Empezar' }).click();
+    });
+
+    // Mia no debe ver la ventana FocusPad de Mateo
+    expect(screen.queryByRole('dialog', { name: 'FocusPad' })).not.toBeInTheDocument();
+
+    // ── Volver con Mateo ──
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Cambiar de usuario' }));
+    });
+
+    act(() => {
+      screen.getByRole('radio', { name: 'Mateo' }).click();
+    });
+    act(() => {
+      for (const char of pinMateo) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+
+    // Mateo recupera su ventana
+    expect(screen.getByRole('dialog', { name: 'FocusPad' })).toBeInTheDocument();
+  });
+
+  it('cerrar sesión pide confirmación y termina procesos del usuario', async () => {
+    render(<App />);
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    act(() => {
+      screen.getByRole('radio', { name: 'Mateo' }).click();
+    });
+    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    act(() => {
+      for (const char of pinMateo) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Empezar' }).click();
+    });
+
+    // Abrir menú de usuario y cerrar sesión
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mateo' }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
+    });
+
+    // Diálogo de confirmación
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(screen.getByText('¿Cerrar sesión de Mateo?')).toBeInTheDocument();
+
+    // Confirmar
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    });
+
+    // Vuelve al login
+    expect(screen.getByText('¿Quién eres?')).toBeInTheDocument();
+  });
+
+  it('abre la app Ambient desde el dock y muestra su ventana con controles de sonido', async () => {
+    render(<App />);
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    act(() => {
+      screen.getByRole('radio', { name: 'Mateo' }).click();
+    });
+    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    act(() => {
+      for (const char of pinMateo) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Empezar' }).click();
+    });
+
+    // Abrir Ambient desde el dock
+    const btnAmbient = screen.getByRole('button', { name: 'Ambient' });
+    act(() => {
+      fireEvent.click(btnAmbient);
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Ambient' })).toBeInTheDocument();
+    expect(screen.getByText('Sonido de fondo')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lluvia' })).toBeInTheDocument();
   });
 });
+

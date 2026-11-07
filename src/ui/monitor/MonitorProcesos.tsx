@@ -15,6 +15,7 @@ import { IconoApp } from '../components/IconoApp';
 import { PildoraEstado } from '../components/PildoraEstado';
 import { Dialogo } from '../components/Dialogo';
 import { TarjetaResumen } from './TarjetaResumen';
+import { servicioAudio } from '../../system/audio/servicio';
 
 export function MonitorProcesos() {
   const { procesos, terminar } = useProcesos();
@@ -49,6 +50,11 @@ export function MonitorProcesos() {
     const ventanaAsociada = ventanas.find((v) => v.pid === procesoATerminar.pid);
     if (ventanaAsociada) {
       cerrar(ventanaAsociada.id);
+    }
+
+    // 3. Detener audio si el proceso terminado es Ambient
+    if (procesoATerminar.nombre === 'ambient') {
+      servicioAudio.detener();
     }
 
     setMensajeLive(`El proceso ${nombre} ha sido terminado.`);

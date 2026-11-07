@@ -8,6 +8,7 @@ describe('Ventana', () => {
     id: 'ventana-1',
     appId: 'focuspad',
     pid: 1,
+    usuarioId: 'mateo',
     x: 50,
     y: 60,
     ancho: 760,

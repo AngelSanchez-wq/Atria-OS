@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import { Bell, Power, Volume2, Wifi } from 'lucide-react';
 import {
   ALTURA_BARRA_CLASE,
@@ -12,6 +13,8 @@ import { useSesion } from '../../store/sesion';
 import { Buho } from '../components/Buho';
 import { BotonIcono } from './BotonIcono';
 import { IndicadorBateria } from './IndicadorBateria';
+import { MenuEncendido } from './MenuEncendido';
+import { MenuUsuario } from './MenuUsuario';
 
 type BarraSistemaProps = {
   titulo?: string;
@@ -23,6 +26,12 @@ type BarraSistemaProps = {
   onNotificaciones?: () => void;
   onUsuario?: () => void;
   onEncendido?: () => void;
+  onBloquear?: () => void;
+  onSuspender?: () => void;
+  onReiniciar?: () => void;
+  onApagar?: () => void;
+  onCambiarUsuario?: () => void;
+  onCerrarSesion?: () => void;
 };
 
 export function BarraSistema({
@@ -35,6 +44,12 @@ export function BarraSistema({
   onNotificaciones,
   onUsuario,
   onEncendido,
+  onBloquear,
+  onSuspender,
+  onReiniciar,
+  onApagar,
+  onCambiarUsuario,
+  onCerrarSesion,
 }: BarraSistemaProps) {
   const { hora, fecha, ahora } = useHora();
   const estado = obtenerEstadoSistema();
@@ -42,10 +57,42 @@ export function BarraSistema({
   const inicial = usuario?.inicial ?? '?';
   const nombreUsuario = usuario?.nombre ?? 'Usuario';
 
+  const [menuEncendidoAbierto, setMenuEncendidoAbierto] = useState(false);
+  const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
+
+  const botonPowerRef = useRef<HTMLButtonElement>(null);
+  const botonUsuarioRef = useRef<HTMLButtonElement>(null);
+
+  const alternarMenuEncendido = () => {
+    setMenuUsuarioAbierto(false);
+    if (onEncendido) {
+      onEncendido();
+    }
+    setMenuEncendidoAbierto((prev) => !prev);
+  };
+
+  const cerrarMenuEncendido = () => {
+    setMenuEncendidoAbierto(false);
+    botonPowerRef.current?.focus();
+  };
+
+  const alternarMenuUsuario = () => {
+    setMenuEncendidoAbierto(false);
+    if (onUsuario) {
+      onUsuario();
+    }
+    setMenuUsuarioAbierto((prev) => !prev);
+  };
+
+  const cerrarMenuUsuario = () => {
+    setMenuUsuarioAbierto(false);
+    botonUsuarioRef.current?.focus();
+  };
+
   return (
     <header
       role="banner"
-      className={`flex ${ALTURA_BARRA_CLASE} w-full items-center gap-3 border-b border-line bg-card px-4`}
+      className={`relative flex ${ALTURA_BARRA_CLASE} w-full items-center gap-3 border-b border-line bg-card px-4`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className={CLASE_CIRCULO_BUHO}>
@@ -117,8 +164,9 @@ export function BarraSistema({
         </BotonIcono>
 
         <BotonIcono
+          ref={botonUsuarioRef}
           etiqueta={nombreUsuario}
-          onClick={onUsuario}
+          onClick={alternarMenuUsuario}
           className="text-ink"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-full border border-accent bg-soft text-sm font-bold">
@@ -127,13 +175,48 @@ export function BarraSistema({
         </BotonIcono>
 
         <BotonIcono
+          ref={botonPowerRef}
           etiqueta="Apagar o reiniciar"
-          onClick={onEncendido}
-          className="text-muted"
+          onClick={alternarMenuEncendido}
+          className={menuEncendidoAbierto ? 'text-accent' : 'text-muted'}
         >
           <Power size={TAMANO_ICONO_BARRA} aria-hidden="true" />
         </BotonIcono>
       </div>
+
+      <MenuEncendido
+        abierto={menuEncendidoAbierto}
+        onCerrar={cerrarMenuEncendido}
+        onBloquear={() => {
+          cerrarMenuEncendido();
+          onBloquear?.();
+        }}
+        onSuspender={() => {
+          cerrarMenuEncendido();
+          onSuspender?.();
+        }}
+        onReiniciar={() => {
+          cerrarMenuEncendido();
+          onReiniciar?.();
+        }}
+        onApagar={() => {
+          cerrarMenuEncendido();
+          onApagar?.();
+        }}
+      />
+
+      <MenuUsuario
+        abierto={menuUsuarioAbierto}
+        onCerrar={cerrarMenuUsuario}
+        onCambiarUsuario={() => {
+          cerrarMenuUsuario();
+          onCambiarUsuario?.();
+        }}
+        onCerrarSesion={() => {
+          cerrarMenuUsuario();
+          onCerrarSesion?.();
+        }}
+      />
     </header>
   );
 }

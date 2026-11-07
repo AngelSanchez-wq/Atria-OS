@@ -3,36 +3,275 @@ import { PantallaEncendido } from './ui/boot/PantallaEncendido';
 import { PantallaLogin } from './ui/login/PantallaLogin';
 import { PantallaBienvenida } from './ui/welcome/PantallaBienvenida';
 import { PantallaEscritorio } from './ui/desktop/PantallaEscritorio';
+import { PantallaSuspendido } from './ui/power/PantallaSuspendido';
+import { PantallaApagando } from './ui/power/PantallaApagando';
+import { PantallaApagado } from './ui/power/PantallaApagado';
+import { Dialogo } from './ui/components/Dialogo';
 import { useSesion } from './store/sesion';
 import { useTareas } from './store/tareas';
+import { useVentanas } from './store/ventanas';
+import { useProcesos } from './store/procesos';
+import { useEnergia } from './store/energia';
+import {
+  restaurarProcesosDeSuspension,
+  limpiarProcesosPorReinicioOApagado,
+} from './kernel/power/transiciones';
+import {
+  pausarProcesosDeUsuario,
+  restaurarProcesosDeUsuario,
+  terminarProcesosDeUsuario,
+} from './kernel/processes/usuario-aislamiento';
 import { TAREAS_SEMILLA } from './kernel/tasks/tareas-semilla';
+import { Usuario } from './kernel/types';
 
 export default function App() {
-  const [encendidoTerminado, setEncendidoTerminado] = useState(false);
   const usuario = useSesion((s) => s.usuario);
+  const estadosProcesosPorUsuario = useSesion(
+    (s) => s.estadosProcesosPorUsuario
+  );
+  const tareasPorUsuario = useSesion((s) => s.tareasPorUsuario);
   const ingresar = useSesion((s) => s.ingresar);
+  const salir = useSesion((s) => s.salir);
+  const guardarEstadosUsuario = useSesion((s) => s.guardarEstadosUsuario);
+  const guardarTareasUsuario = useSesion((s) => s.guardarTareasUsuario);
+  const limpiarUsuario = useSesion((s) => s.limpiarUsuario);
+
   const tareaActiva = useTareas((s) => s.tareaActiva);
   const empezarTarea = useTareas((s) => s.empezar);
 
-  if (!encendidoTerminado) {
-    return <PantallaEncendido onTerminar={() => setEncendidoTerminado(true)} />;
+  const procesos = useProcesos((s) => s.procesos);
+
+  const [dialogoCerrarSesion, setDialogoCerrarSesion] = useState(false);
+
+  const {
+    estado,
+    estadosProcesosPrevios,
+    dialogoConfirmacion,
+    transicionar,
+    cancelarDialogo,
+  } = useEnergia();
+
+  const manejarIngresar = (u: Usuario) => {
+    ingresar(u);
+    // Restaurar procesos del usuario
+    const estadosPrevios = estadosProcesosPorUsuario[u.id];
+    if (estadosPrevios) {
+      const restaurados = restaurarProcesosDeUsuario(
+        useProcesos.getState().procesos,
+        u.id,
+        estadosPrevios
+      );
+      useProcesos.setState({ procesos: restaurados });
+    }
+
+    // Restaurar tareas del usuario si ya tenía una activa
+    const tareasPrevias = tareasPorUsuario[u.id];
+    if (tareasPrevias) {
+      useTareas.setState(tareasPrevias);
+    } else {
+      useTareas.setState({
+        tareaActiva: null,
+        pendientes: [],
+        estado: 'en-curso',
+        segundosTranscurridos: 0,
+      });
+    }
+
+    transicionar('activo');
+  };
+
+  const manejarCambiarUsuario = () => {
+    if (usuario) {
+      const { procesosActualizados, estadosPrevios } = pausarProcesosDeUsuario(
+        useProcesos.getState().procesos,
+        usuario.id
+      );
+      guardarEstadosUsuario(usuario.id, estadosPrevios);
+      useProcesos.setState({ procesos: procesosActualizados });
+
+      const stTareas = useTareas.getState();
+      guardarTareasUsuario(usuario.id, {
+        tareaActiva: stTareas.tareaActiva,
+        pendientes: stTareas.pendientes,
+        estado: stTareas.estado,
+        segundosTranscurridos: stTareas.segundosTranscurridos,
+      });
+      useTareas.setState({
+        tareaActiva: null,
+        pendientes: [],
+        estado: 'en-curso',
+        segundosTranscurridos: 0,
+      });
+    }
+    salir();
+    transicionar('login');
+  };
+
+  const solicitarCerrarSesion = () => {
+    setDialogoCerrarSesion(true);
+  };
+
+  const confirmarCerrarSesion = () => {
+    if (usuario) {
+      const procesosLimpios = terminarProcesosDeUsuario(
+        useProcesos.getState().procesos,
+        usuario.id
+      );
+      useProcesos.setState({ procesos: procesosLimpios });
+      useVentanas.getState().cerrarDeUsuario(usuario.id);
+      limpiarUsuario(usuario.id);
+      useTareas.setState({
+        tareaActiva: null,
+        pendientes: [],
+        estado: 'en-curso',
+        segundosTranscurridos: 0,
+      });
+    }
+    salir();
+    setDialogoCerrarSesion(false);
+    transicionar('login');
+  };
+
+  // 1. Encendido
+  if (estado === 'encendiendo') {
+    return <PantallaEncendido onTerminar={() => transicionar('login')} />;
   }
 
-  if (!usuario) {
-    return <PantallaLogin onIngresar={ingresar} />;
+  // 2. Login general
+  if (estado === 'login') {
+    return <PantallaLogin onIngresar={manejarIngresar} />;
   }
 
-  if (!tareaActiva) {
+  // 3. Bloqueado (reautenticación con el usuario en sesión)
+  if (estado === 'bloqueado') {
     return (
-      <PantallaBienvenida 
-        onEmpezar={(tarea) => {
-          // Cargamos las demás tareas semilla como pendientes por ahora
-          const pendientes = TAREAS_SEMILLA.filter(t => t.id !== tarea.id);
-          empezarTarea(tarea, pendientes);
-        }} 
+      <PantallaLogin
+        usuarios={usuario ? [usuario] : undefined}
+        onIngresar={() => {
+          transicionar('activo');
+        }}
       />
     );
   }
 
-  return <PantallaEscritorio />;
+  // 4. Suspendido
+  if (estado === 'suspendido') {
+    return (
+      <PantallaSuspendido
+        onReanudar={() => {
+          const restaurados = restaurarProcesosDeSuspension(
+            procesos,
+            estadosProcesosPrevios
+          );
+          useProcesos.setState({ procesos: restaurados });
+          transicionar('activo');
+        }}
+      />
+    );
+  }
+
+  // 5. Apagando
+  if (estado === 'apagando') {
+    return (
+      <PantallaApagando
+        modo="apagando"
+        onTerminar={() => {
+          salir();
+          useVentanas.setState({ ventanas: [], focusPid: null, _contadorFoco: 0 });
+          useProcesos.setState({ procesos: limpiarProcesosPorReinicioOApagado() });
+          useTareas.setState({
+            tareaActiva: null,
+            pendientes: [],
+            estado: 'en-curso',
+            segundosTranscurridos: 0,
+          });
+          transicionar('apagado');
+        }}
+      />
+    );
+  }
+
+  // 6. Reiniciando
+  if (estado === 'reiniciando') {
+    return (
+      <PantallaApagando
+        modo="reiniciando"
+        onTerminar={() => {
+          salir();
+          useVentanas.setState({ ventanas: [], focusPid: null, _contadorFoco: 0 });
+          useProcesos.setState({ procesos: limpiarProcesosPorReinicioOApagado() });
+          useTareas.setState({
+            tareaActiva: null,
+            pendientes: [],
+            estado: 'en-curso',
+            segundosTranscurridos: 0,
+          });
+          transicionar('encendiendo');
+        }}
+      />
+    );
+  }
+
+  // 7. Apagado
+  if (estado === 'apagado') {
+    return (
+      <PantallaApagado
+        onEncender={() => {
+          transicionar('encendiendo');
+        }}
+      />
+    );
+  }
+
+  // 8. Activo (Bienvenida o Escritorio)
+  return (
+    <>
+      {!tareaActiva ? (
+        <PantallaBienvenida
+          onEmpezar={(tarea) => {
+            const pendientes = TAREAS_SEMILLA.filter((t) => t.id !== tarea.id);
+            empezarTarea(tarea, pendientes);
+          }}
+          onCambiarUsuario={manejarCambiarUsuario}
+          onCerrarSesion={solicitarCerrarSesion}
+        />
+      ) : (
+        <PantallaEscritorio
+          onCambiarUsuario={manejarCambiarUsuario}
+          onCerrarSesion={solicitarCerrarSesion}
+        />
+      )}
+
+      {/* Diálogos de confirmación para Apagar, Reiniciar y Cerrar Sesión */}
+      <Dialogo
+        abierto={dialogoConfirmacion === 'apagar'}
+        titulo="¿Apagar Atria-OS?"
+        mensaje="Se guardarán tus tareas y se cerrarán las apps abiertas."
+        textoConfirmar="Apagar"
+        textoCancelar="Cancelar"
+        onConfirmar={() => transicionar('apagando')}
+        onCancelar={cancelarDialogo}
+      />
+
+      <Dialogo
+        abierto={dialogoConfirmacion === 'reiniciar'}
+        titulo="¿Reiniciar Atria-OS?"
+        mensaje="Se guardarán tus tareas y se cerrarán las apps abiertas."
+        textoConfirmar="Reiniciar"
+        textoCancelar="Cancelar"
+        onConfirmar={() => transicionar('reiniciando')}
+        onCancelar={cancelarDialogo}
+      />
+
+      <Dialogo
+        abierto={dialogoCerrarSesion}
+        titulo={`¿Cerrar sesión de ${usuario?.nombre ?? 'usuario'}?`}
+        mensaje="Se cerrarán todas tus aplicaciones y ventanas abiertas."
+        textoConfirmar="Cerrar sesión"
+        textoCancelar="Cancelar"
+        onConfirmar={confirmarCerrarSesion}
+        onCancelar={() => setDialogoCerrarSesion(false)}
+      />
+    </>
+  );
 }

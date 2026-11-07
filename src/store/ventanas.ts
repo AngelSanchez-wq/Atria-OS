@@ -17,6 +17,7 @@ export type DatosVentana = {
   id: string;
   appId: AppId;
   pid: number;
+  usuarioId: string;
   x: number;
   y: number;
   ancho: number;
@@ -33,8 +34,9 @@ type VentanasStore = {
   /** Contador global de orden de foco. */
   _contadorFoco: number;
 
-  abrir: (appId: AppId, pid: number) => void;
+  abrir: (appId: AppId, pid: number, usuarioId?: string) => void;
   cerrar: (id: string) => void;
+  cerrarDeUsuario: (usuarioId: string) => void;
   minimizar: (id: string) => void;
   restaurar: (id: string) => void;
   maximizar: (id: string) => void;
@@ -49,13 +51,14 @@ export const useVentanas = create<VentanasStore>((set, get) => ({
   focusPid: null,
   _contadorFoco: 0,
 
-  abrir: (appId, pid) => {
+  abrir: (appId, pid, usuarioId = 'invitado') => {
     const { ventanas, _contadorFoco } = get();
     const n = ventanas.filter((v) => v.estado !== 'minimizada').length;
     const nuevaVentana: DatosVentana = {
       id: `ventana-${pid}`,
       appId,
       pid,
+      usuarioId,
       x: CASCADA_OFFSET * n,
       y: CASCADA_OFFSET * n,
       ancho: VENTANA_ANCHO_INICIAL,
@@ -73,7 +76,19 @@ export const useVentanas = create<VentanasStore>((set, get) => ({
   cerrar: (id) => {
     set((s) => {
       const restantes = s.ventanas.filter((v) => v.id !== id);
-      // Enfocar la siguiente ventana visible con mayor ordenFoco
+      const siguiente = restantes
+        .filter((v) => v.estado !== 'minimizada')
+        .sort((a, b) => b.ordenFoco - a.ordenFoco)[0];
+      return {
+        ventanas: restantes,
+        focusPid: siguiente?.id ?? null,
+      };
+    });
+  },
+
+  cerrarDeUsuario: (usuarioId) => {
+    set((s) => {
+      const restantes = s.ventanas.filter((v) => v.usuarioId !== usuarioId);
       const siguiente = restantes
         .filter((v) => v.estado !== 'minimizada')
         .sort((a, b) => b.ordenFoco - a.ordenFoco)[0];

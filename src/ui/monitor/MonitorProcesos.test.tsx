@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MonitorProcesos } from './MonitorProcesos';
 import { useProcesos } from '../../store/procesos';
 import { useVentanas } from '../../store/ventanas';
 import { PROCESO_KERNEL_BASE } from '../../kernel/processes/constantes';
 import { PCB } from '../../kernel/types';
+import { servicioAudio } from '../../system/audio/servicio';
 
 describe('MonitorProcesos', () => {
   beforeEach(() => {
@@ -41,6 +42,7 @@ describe('MonitorProcesos', () => {
           id: 'ventana-2',
           appId: 'timelapse',
           pid: 2,
+          usuarioId: 'mateo',
           x: 0,
           y: 0,
           ancho: 760,
@@ -76,4 +78,31 @@ describe('MonitorProcesos', () => {
     expect(useProcesos.getState().procesos.find((p) => p.pid === 2)?.estado).toBe('Terminado');
     expect(useVentanas.getState().ventanas).toHaveLength(0);
   });
+
+  it('terminar el proceso de Ambient detiene el audio del sistema', () => {
+    const spyDetener = vi.spyOn(servicioAudio, 'detener');
+
+    const procesoAmbient: PCB = {
+      pid: 3,
+      nombre: 'ambient',
+      estado: 'En ejecución',
+      prioridad: 1,
+      memoriaMb: 48,
+      usuarioId: 'mateo',
+      creadoEn: 1000,
+      tipoApp: 'interna',
+    };
+
+    useProcesos.setState({ procesos: [PROCESO_KERNEL_BASE, procesoAmbient] });
+    render(<MonitorProcesos />);
+
+    const btnTerminar = screen.getByRole('button', { name: 'Terminar' });
+    fireEvent.click(btnTerminar);
+
+    const btnConfirmar = screen.getAllByRole('button', { name: 'Terminar' })[1];
+    fireEvent.click(btnConfirmar);
+
+    expect(spyDetener).toHaveBeenCalledOnce();
+  });
 });
+

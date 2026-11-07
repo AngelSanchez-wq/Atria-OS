@@ -3,6 +3,8 @@ import { useTareas } from '../../store/tareas';
 import { useVentanas } from '../../store/ventanas';
 import { useProcesos } from '../../store/procesos';
 import { useSesion } from '../../store/sesion';
+import { useEnergia } from '../../store/energia';
+import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
 import { AppId } from '../../kernel/types';
 import { APPS } from '../../config/apps';
 import { BarraSistema } from '../systembar/BarraSistema';
@@ -13,7 +15,15 @@ import { ContenedorVentanas } from '../window/ContenedorVentanas';
 import { FACTOR_VELOCIDAD_DEMO } from '../../config/tiempo';
 import { CUPO_MAXIMO_TAREAS } from '../../config/escritorio';
 
-export function PantallaEscritorio() {
+type PantallaEscritorioProps = {
+  onCambiarUsuario?: () => void;
+  onCerrarSesion?: () => void;
+};
+
+export function PantallaEscritorio({
+  onCambiarUsuario,
+  onCerrarSesion,
+}: PantallaEscritorioProps) {
   const {
     tareaActiva,
     estado,
@@ -26,8 +36,14 @@ export function PantallaEscritorio() {
   } = useTareas();
 
   const { ventanas, focusPid, abrir, restaurar, enfocar } = useVentanas();
-  const { lanzar, cambiarEstado } = useProcesos();
+  const { procesos, lanzar, cambiarEstado } = useProcesos();
   const usuario = useSesion((s) => s.usuario);
+  const {
+    transicionar,
+    solicitarApagar,
+    solicitarReiniciar,
+    guardarEstadosPrevios,
+  } = useEnergia();
 
   const [avisoMemoria, setAvisoMemoria] = useState<string | null>(null);
 
@@ -42,7 +58,11 @@ export function PantallaEscritorio() {
     return () => clearInterval(intervalo);
   }, [estado, tareaActiva, avanzar]);
 
-  const ventanaEnfocada = ventanas.find((v) => v.id === focusPid);
+  const ventanasUsuario = ventanas.filter(
+    (v) => !v.usuarioId || !usuario || v.usuarioId === usuario.id
+  );
+
+  const ventanaEnfocada = ventanasUsuario.find((v) => v.id === focusPid);
   const tituloBarra =
     ventanaEnfocada && ventanaEnfocada.estado !== 'minimizada'
       ? APPS[ventanaEnfocada.appId].nombre
@@ -53,11 +73,12 @@ export function PantallaEscritorio() {
       ? ventanaEnfocada.appId
       : null;
 
-  const appsAbiertas = ventanas.map((v) => v.appId);
+  const appsAbiertas = ventanasUsuario.map((v) => v.appId);
 
   const manejarAbrirApp = (idApp: AppId) => {
     setAvisoMemoria(null);
-    const ventanaExistente = ventanas.find((v) => v.appId === idApp);
+    const usuarioId = usuario?.id ?? 'invitado';
+    const ventanaExistente = ventanasUsuario.find((v) => v.appId === idApp);
 
     if (ventanaExistente) {
       if (ventanaExistente.estado === 'minimizada') {
@@ -70,7 +91,6 @@ export function PantallaEscritorio() {
       return;
     }
 
-    const usuarioId = usuario?.id ?? 'invitado';
     const proceso = lanzar(idApp, usuarioId);
 
     if (!proceso) {
@@ -80,14 +100,33 @@ export function PantallaEscritorio() {
       return;
     }
 
-    abrir(idApp, proceso.pid);
+    abrir(idApp, proceso.pid, usuarioId);
     cambiarEstado(proceso.pid, 'En ejecución');
+  };
+
+  const manejarBloquear = () => {
+    transicionar('bloqueado');
+  };
+
+  const manejarSuspender = () => {
+    const { procesosPausados, estadosPrevios } = pausarProcesosPorSuspension(procesos);
+    guardarEstadosPrevios(estadosPrevios);
+    useProcesos.setState({ procesos: procesosPausados });
+    transicionar('suspendido');
   };
 
   if (!tareaActiva) {
     return (
       <div className="flex h-full w-full flex-col bg-bg">
-        <BarraSistema titulo={tituloBarra} />
+        <BarraSistema
+          titulo={tituloBarra}
+          onBloquear={manejarBloquear}
+          onSuspender={manejarSuspender}
+          onReiniciar={solicitarReiniciar}
+          onApagar={solicitarApagar}
+          onCambiarUsuario={onCambiarUsuario}
+          onCerrarSesion={onCerrarSesion}
+        />
         <main className="flex flex-1 items-center justify-center">
           <p className="text-xl text-muted">
             Logro: pendiente (No tienes tareas pendientes)
@@ -99,7 +138,15 @@ export function PantallaEscritorio() {
 
   return (
     <div className="flex h-full w-full flex-col bg-bg">
-      <BarraSistema titulo={tituloBarra} />
+      <BarraSistema
+        titulo={tituloBarra}
+        onBloquear={manejarBloquear}
+        onSuspender={manejarSuspender}
+        onReiniciar={solicitarReiniciar}
+        onApagar={solicitarApagar}
+        onCambiarUsuario={onCambiarUsuario}
+        onCerrarSesion={onCerrarSesion}
+      />
 
       {avisoMemoria && (
         <div

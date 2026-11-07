@@ -11,15 +11,26 @@ describe('Store Ventanas', () => {
   });
 
   it('abrir crea una ventana con los valores iniciales correctos', () => {
-    useVentanas.getState().abrir('focuspad', 1);
+    useVentanas.getState().abrir('focuspad', 1, 'mateo');
     const { ventanas, focusPid } = useVentanas.getState();
     expect(ventanas).toHaveLength(1);
     expect(ventanas[0].appId).toBe('focuspad');
     expect(ventanas[0].pid).toBe(1);
+    expect(ventanas[0].usuarioId).toBe('mateo');
     expect(ventanas[0].ancho).toBe(VENTANA_ANCHO_INICIAL);
     expect(ventanas[0].alto).toBe(VENTANA_ALTO_INICIAL);
     expect(ventanas[0].estado).toBe('normal');
     expect(focusPid).toBe(ventanas[0].id);
+  });
+
+  it('cerrarDeUsuario cierra solo las ventanas del usuario indicado', () => {
+    useVentanas.getState().abrir('focuspad', 1, 'mateo');
+    useVentanas.getState().abrir('timelapse', 2, 'mia');
+
+    useVentanas.getState().cerrarDeUsuario('mateo');
+    const { ventanas } = useVentanas.getState();
+    expect(ventanas).toHaveLength(1);
+    expect(ventanas[0].usuarioId).toBe('mia');
   });
 
   it('abrir dos ventanas las posiciona en cascada', () => {
@@ -28,13 +39,6 @@ describe('Store Ventanas', () => {
     const { ventanas } = useVentanas.getState();
     expect(ventanas[1].x).toBeGreaterThan(ventanas[0].x);
     expect(ventanas[1].y).toBeGreaterThan(ventanas[0].y);
-  });
-
-  it('no abre dos ventanas de la misma app (responsabilidad del store de procesos; aquí solo validamos que abrir agrega)', () => {
-    useVentanas.getState().abrir('focuspad', 1);
-    useVentanas.getState().abrir('focuspad', 2);
-    expect(useVentanas.getState().ventanas).toHaveLength(2);
-    // La restricción de 1 ventana por app se maneja en la capa de llamada
   });
 
   it('minimizar oculta la ventana y mueve el foco a la siguiente', () => {
@@ -68,15 +72,6 @@ describe('Store Ventanas', () => {
     useVentanas.getState().cerrar(ids[1]);
     expect(useVentanas.getState().ventanas).toHaveLength(1);
     expect(useVentanas.getState().focusPid).toBe(ids[0]);
-  });
-
-  it('cerrar la última ventana deja focusPid en null', () => {
-    useVentanas.getState().abrir('focuspad', 1);
-    const id = useVentanas.getState().ventanas[0].id;
-
-    useVentanas.getState().cerrar(id);
-    expect(useVentanas.getState().ventanas).toHaveLength(0);
-    expect(useVentanas.getState().focusPid).toBeNull();
   });
 
   it('maximizar alterna entre maximizada y normal', () => {

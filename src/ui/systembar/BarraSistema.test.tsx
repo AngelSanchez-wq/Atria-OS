@@ -65,7 +65,6 @@ describe('BarraSistema', () => {
     const onVolumen = vi.fn();
     const onBateria = vi.fn();
     const onNotificaciones = vi.fn();
-    const onEncendido = vi.fn();
 
     render(
       <BarraSistema
@@ -74,7 +73,6 @@ describe('BarraSistema', () => {
         onVolumen={onVolumen}
         onBateria={onBateria}
         onNotificaciones={onNotificaciones}
-        onEncendido={onEncendido}
       />,
     );
 
@@ -83,14 +81,40 @@ describe('BarraSistema', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volumen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Batería 72 %' }));
     fireEvent.click(screen.getByRole('button', { name: 'Notificaciones, 3' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Apagar o reiniciar' }));
 
     expect(onVolver).toHaveBeenCalledTimes(1);
     expect(onWifi).toHaveBeenCalledTimes(1);
     expect(onVolumen).toHaveBeenCalledTimes(1);
     expect(onBateria).toHaveBeenCalledTimes(1);
     expect(onNotificaciones).toHaveBeenCalledTimes(1);
-    expect(onEncendido).toHaveBeenCalledTimes(1);
+  });
+
+  it('despliega el menú de encendido y ejecuta las acciones seleccionadas', () => {
+    const onBloquear = vi.fn();
+    render(<BarraSistema onBloquear={onBloquear} />);
+
+    // Abrir menú de encendido
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar o reiniciar' }));
+    expect(screen.getByRole('menu', { name: 'Menú de encendido' })).toBeInTheDocument();
+
+    // Clic en Bloquear
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Bloquear' }));
+    expect(onBloquear).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('menu', { name: 'Menú de encendido' })).not.toBeInTheDocument();
+  });
+
+  it('despliega el menú de usuario y ejecuta cambiar de usuario', () => {
+    const onCambiarUsuario = vi.fn();
+    render(<BarraSistema onCambiarUsuario={onCambiarUsuario} />);
+
+    // Clic en el avatar de usuario
+    fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
+    expect(screen.getByRole('menu', { name: 'Menú de usuario' })).toBeInTheDocument();
+
+    // Clic en Cambiar de usuario
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Cambiar de usuario' }));
+    expect(onCambiarUsuario).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('menu', { name: 'Menú de usuario' })).not.toBeInTheDocument();
   });
 
   it('actualiza la hora cuando avanza el temporizador', async () => {
