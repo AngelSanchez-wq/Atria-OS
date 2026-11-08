@@ -9,6 +9,8 @@ type IconoAppProps = {
 
 export function IconoApp({ app, size = 24, decorativo = true }: IconoAppProps) {
   const info = APPS[app];
+  if (!info) return null;
+
   const src = `${import.meta.env.BASE_URL}${info.rutaLogo}`;
   
   return (

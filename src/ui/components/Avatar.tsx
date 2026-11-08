@@ -1,10 +1,13 @@
-import { Check } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 
 type AvatarProps = {
   nombre: string;
   inicial: string;
   seleccionado: boolean;
   esAdmin?: boolean;
+  bloqueado?: boolean;
+  imagen?: string;
+  foto?: string;
   onSeleccionar: () => void;
   /** Para el grupo de radios: solo el seleccionado queda en el tab order. */
   tabIndex?: number;
@@ -15,9 +18,14 @@ export function Avatar({
   inicial,
   seleccionado,
   esAdmin = false,
+  bloqueado = false,
+  imagen,
+  foto,
   onSeleccionar,
   tabIndex = 0,
 }: AvatarProps) {
+  const urlFoto = foto ?? imagen;
+
   const clasesCirculo = esAdmin
     ? seleccionado
       ? 'bg-warm text-warm-ink ring-4 ring-accent'
@@ -34,18 +42,39 @@ export function Avatar({
       aria-label={nombre}
       tabIndex={tabIndex}
       onClick={onSeleccionar}
-      className="flex flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+      className={[
+        'flex flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+      ].join(' ')}
     >
       <span className="relative inline-flex">
         <span
           className={[
-            'flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold transition-shadow motion-reduce:transition-none',
+            'flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold transition-all motion-reduce:transition-none overflow-hidden',
             clasesCirculo,
-          ].join(' ')}
+            bloqueado ? 'opacity-60' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
         >
-          {inicial}
+          {urlFoto ? (
+            <img
+              src={urlFoto}
+              alt={nombre}
+              className="h-full w-full object-cover rounded-full"
+            />
+          ) : (
+            inicial
+          )}
         </span>
-        {seleccionado ? (
+
+        {bloqueado ? (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-warm text-warm-ink border border-warm-line shadow-xs"
+            aria-hidden="true"
+          >
+            <Lock className="h-3.5 w-3.5 stroke-[2.5]" />
+          </span>
+        ) : seleccionado ? (
           <span
             className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-bg"
             aria-hidden="true"

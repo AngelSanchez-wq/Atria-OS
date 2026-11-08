@@ -22,7 +22,7 @@ describe('ContenedorVentanas', () => {
 
     render(<ContenedorVentanas />);
 
-    expect(screen.getByRole('dialog', { name: 'Monitor de procesos' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Administración' })).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Ambient' })).toBeInTheDocument();
     expect(screen.getByText('Sonido de fondo')).toBeInTheDocument();
   });

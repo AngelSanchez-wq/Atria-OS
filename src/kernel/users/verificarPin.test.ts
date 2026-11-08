@@ -1,13 +1,7 @@
 import { verificarPin } from './verificarPin';
-import type { Usuario } from '../types';
+import { USUARIOS_SEMILLA } from './usuarios-semilla';
 
-const usuarioPrueba: Usuario = {
-  id: 'mia',
-  nombre: 'Mia',
-  inicial: 'M',
-  rol: 'estandar',
-  pin: '1234',
-};
+const usuarioPrueba = USUARIOS_SEMILLA[0];
 
 describe('verificarPin', () => {
   it('acepta el PIN correcto', () => {

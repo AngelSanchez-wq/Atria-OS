@@ -13,12 +13,13 @@ import { APPS } from '../../config/apps';
 import { BarraSistema } from '../systembar/BarraSistema';
 import { AvisoUrgente } from '../components/AvisoUrgente';
 import { registrar } from '../../system/logging/servicio';
+import { puedeAbrirApp, cupoDeTareas } from '../../kernel/users/decisiones';
 import { Dock } from './Dock';
 import { TarjetaTareaActiva } from './TarjetaTareaActiva';
 import { FranjaPendientes } from './FranjaPendientes';
 import { ContenedorVentanas } from '../window/ContenedorVentanas';
+import { DialogoRechazoApp } from './DialogoRechazoApp';
 import { FACTOR_VELOCIDAD_DEMO } from '../../config/tiempo';
-import { CUPO_MAXIMO_TAREAS } from '../../config/escritorio';
 
 type PantallaEscritorioProps = {
   onCambiarUsuario?: () => void;
@@ -43,7 +44,15 @@ export function PantallaEscritorio({
     avanzar,
   } = useTareas();
 
-  const { ventanas, focusPid, abrir, restaurar, enfocar } = useVentanas();
+  const {
+    ventanas,
+    focusPid,
+    abrir,
+    restaurar,
+    enfocar,
+    ultimoRechazoApertura,
+    registrarRechazoApertura,
+  } = useVentanas();
   const { procesos, lanzar, cambiarEstado } = useProcesos();
   const usuario = useSesion((s) => s.usuario);
   const {
@@ -103,12 +112,23 @@ export function PantallaEscritorio({
       return;
     }
 
+    // Comprobación de límites por perfil en el kernel antes de abrir
+    const decision = puedeAbrirApp(usuario, idApp, procesos);
+    if (!decision.ok) {
+      registrarRechazoApertura({ idApp, motivo: decision.motivo });
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'aviso',
+        mensaje: `Apertura rechazada de ${APPS[idApp]?.nombre ?? idApp}: ${decision.motivo}`,
+        usuarioId,
+      });
+      return;
+    }
+
     const proceso = lanzar(idApp, usuarioId);
 
     if (!proceso) {
-      setAvisoMemoria(
-        'No hay memoria disponible. Cierra una app para abrir otra.'
-      );
+      registrarRechazoApertura({ idApp, motivo: 'memoria-insuficiente' });
       return;
     }
 
@@ -183,6 +203,10 @@ export function PantallaEscritorio({
             <ContenedorVentanas />
           </main>
         </div>
+        <DialogoRechazoApp
+          rechazo={ultimoRechazoApertura}
+          onCerrar={() => registrarRechazoApertura(null)}
+        />
       </div>
     );
   }
@@ -212,6 +236,10 @@ export function PantallaEscritorio({
             No tienes tareas pendientes
           </p>
         </main>
+        <DialogoRechazoApp
+          rechazo={ultimoRechazoApertura}
+          onCerrar={() => registrarRechazoApertura(null)}
+        />
       </div>
     );
   }
@@ -278,12 +306,17 @@ export function PantallaEscritorio({
 
           <FranjaPendientes
             pendientes={pendientes}
-            maximo={CUPO_MAXIMO_TAREAS}
+            maximo={cupoDeTareas(usuario)}
           />
 
           <ContenedorVentanas />
         </main>
       </div>
+
+      <DialogoRechazoApp
+        rechazo={ultimoRechazoApertura}
+        onCerrar={() => registrarRechazoApertura(null)}
+      />
     </div>
   );
 }

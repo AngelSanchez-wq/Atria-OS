@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { formatearFechaCorta, formatearHora } from '../../hooks/useHora';
 import { useSesion } from '../../store/sesion';
-import type { Usuario } from '../../kernel/types';
+import { Usuario } from '../../kernel/types';
+import { LIMITES_USUARIO_POR_DEFECTO } from '../../kernel/users/constantes';
 import { BarraSistema } from './BarraSistema';
 
 const usuarioMia: Usuario = {
@@ -10,6 +11,9 @@ const usuarioMia: Usuario = {
   inicial: 'M',
   rol: 'estandar',
   pin: '1234',
+  estado: 'activo',
+  ultimoAcceso: null,
+  limites: { ...LIMITES_USUARIO_POR_DEFECTO },
 };
 
 describe('BarraSistema', () => {
