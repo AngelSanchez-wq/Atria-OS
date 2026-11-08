@@ -40,4 +40,21 @@ describe('Avatar', () => {
       'true',
     );
   });
+
+  it('muestra la imagen en círculo con texto alternativo si se proporciona', () => {
+    render(
+      <Avatar
+        nombre="Valery"
+        inicial="V"
+        imagen="data:image/png;base64,mock"
+        seleccionado={false}
+        onSeleccionar={() => undefined}
+      />,
+    );
+
+    const img = screen.getByRole('img', { name: 'Valery' });
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', 'data:image/png;base64,mock');
+    expect(screen.queryByText('V')).not.toBeInTheDocument();
+  });
 });

@@ -4,7 +4,9 @@ import { PantallaEscritorio } from './PantallaEscritorio';
 import { useTareas } from '../../store/tareas';
 import { useVentanas } from '../../store/ventanas';
 import { useProcesos } from '../../store/procesos';
-import { Tarea } from '../../kernel/types';
+import { useSesion } from '../../store/sesion';
+import { Usuario, Tarea } from '../../kernel/types';
+import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 
 vi.mock('../systembar/BarraSistema', () => ({
   BarraSistema: ({
@@ -178,5 +180,33 @@ describe('PantallaEscritorio', () => {
     const ventanas2 = useVentanas.getState().ventanas;
     expect(ventanas2).toHaveLength(1);
     expect(screen.getAllByRole('region', { name: 'Configuración del sistema' })).toHaveLength(1);
+  });
+
+  it('rechaza abrir una app deshabilitada para el perfil del usuario y guarda el motivo', () => {
+    useTareas.getState().empezar(tarea1);
+    const usuarioConLimites: Usuario = {
+      ...USUARIOS_SEMILLA[1],
+      limites: {
+        ...USUARIOS_SEMILLA[1].limites,
+        appsHabilitadas: ['focuspad'], // solo focuspad, timelapse NO está habilitada
+      },
+    };
+    useSesion.setState({ usuario: usuarioConLimites });
+    render(<PantallaEscritorio />);
+
+    const btnDockTimelapse = screen.getByRole('button', { name: 'TimeLapse' });
+    act(() => {
+      fireEvent.click(btnDockTimelapse);
+    });
+
+    // No se abrió ventana
+    expect(useVentanas.getState().ventanas).toHaveLength(0);
+    // Se guardó el rechazo en el store para la Entrega 2
+    expect(useVentanas.getState().ultimoRechazoApertura).toEqual({
+      idApp: 'timelapse',
+      motivo: 'app-deshabilitada',
+    });
+    // Se mostró aviso en pantalla
+    expect(screen.getByRole('alert')).toHaveTextContent('No tienes permisos para abrir TimeLapse.');
   });
 });

@@ -2,17 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MenuUsuario } from './MenuUsuario';
 import { useSesion } from '../../store/sesion';
+import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 
 describe('MenuUsuario', () => {
   beforeEach(() => {
     useSesion.setState({
-      usuario: {
-        id: 'mateo',
-        nombre: 'Mateo',
-        inicial: 'M',
-        rol: 'estandar',
-        pin: '5678',
-      },
+      usuario: USUARIOS_SEMILLA[1],
     });
   });
 

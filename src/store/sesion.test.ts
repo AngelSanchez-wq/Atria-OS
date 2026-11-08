@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSesion } from './sesion';
+import { USUARIOS_SEMILLA } from '../kernel/users/usuarios-semilla';
 
 describe('Store Sesion', () => {
   beforeEach(() => {
@@ -7,13 +8,7 @@ describe('Store Sesion', () => {
   });
 
   it('permite ingresar, salir y guardar estados por usuario', () => {
-    const usuario = {
-      id: 'mateo',
-      nombre: 'Mateo',
-      inicial: 'M',
-      rol: 'estandar' as const,
-      pin: '5678',
-    };
+    const usuario = USUARIOS_SEMILLA[1];
 
     useSesion.getState().ingresar(usuario);
     expect(useSesion.getState().usuario).toEqual(usuario);

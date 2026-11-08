@@ -19,7 +19,7 @@ import { TarjetaTareaActiva } from './TarjetaTareaActiva';
 import { FranjaPendientes } from './FranjaPendientes';
 import { ContenedorVentanas } from '../window/ContenedorVentanas';
 import { FACTOR_VELOCIDAD_DEMO } from '../../config/tiempo';
-import { CUPO_MAXIMO_TAREAS } from '../../config/escritorio';
+import { puedeAbrirApp, cupoDeTareas } from '../../kernel/users/decisiones';
 
 type PantallaEscritorioProps = {
   onCambiarUsuario?: () => void;
@@ -106,6 +106,31 @@ export function PantallaEscritorio({
         enfocar(ventanaExistente.id);
         cambiarEstado(ventanaExistente.pid, 'En ejecución');
       }
+      return;
+    }
+
+    // Comprobación de límites por perfil antes de crear el proceso
+    const decision = puedeAbrirApp(usuario, idApp, procesos);
+    if (!decision.ok) {
+      useVentanas.getState().registrarRechazoApertura({ idApp, motivo: decision.motivo });
+      const nombreApp = APPS[idApp]?.nombre ?? idApp;
+      const motivoTexto =
+        decision.motivo === 'app-deshabilitada'
+          ? 'aplicación no habilitada para este perfil'
+          : 'memoria asignada insuficiente';
+
+      registrar({
+        categoria: 'proceso',
+        gravedad: 'aviso',
+        mensaje: `Apertura rechazada de ${nombreApp}: ${motivoTexto}`,
+        usuarioId: usuario?.id,
+      });
+
+      setAvisoMemoria(
+        decision.motivo === 'app-deshabilitada'
+          ? `No tienes permisos para abrir ${nombreApp}.`
+          : 'No hay memoria disponible para tu perfil de usuario.'
+      );
       return;
     }
 
@@ -299,7 +324,7 @@ export function PantallaEscritorio({
 
           <FranjaPendientes
             pendientes={pendientes}
-            maximo={CUPO_MAXIMO_TAREAS}
+            maximo={cupoDeTareas(usuario)}
           />
 
           <ContenedorVentanas />

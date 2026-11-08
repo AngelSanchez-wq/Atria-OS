@@ -104,4 +104,25 @@ describe('PantallaLogin', () => {
     expect(screen.getByText('Quedan 3 intentos')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('una cuenta bloqueada no puede iniciar sesión aunque el PIN sea correcto', () => {
+    const onIngresar = vi.fn();
+    const usuarioBloqueado = {
+      ...USUARIOS_SEMILLA[0],
+      estado: 'bloqueado' as const,
+    };
+
+    render(
+      <PantallaLogin
+        onIngresar={onIngresar}
+        usuarios={[usuarioBloqueado]}
+      />
+    );
+
+    escribirPin(usuarioBloqueado.pin);
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    expect(onIngresar).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Esta cuenta está bloqueada');
+  });
 });

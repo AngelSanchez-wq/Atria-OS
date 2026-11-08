@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { KeyboardEvent as EventoTeclado } from 'react';
 import type { Usuario } from '../../kernel/types';
-import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 import { verificarPin } from '../../kernel/users/verificarPin';
+import { puedeIniciarSesion } from '../../kernel/users/decisiones';
+import { useUsuariosStore } from '../../store/usuarios';
 import {
   DIGITOS_PIN,
   ESPERA_BLOQUEO_MS,
@@ -20,8 +21,12 @@ type PantallaLoginProps = {
 
 export function PantallaLogin({
   onIngresar,
-  usuarios = USUARIOS_SEMILLA,
+  usuarios: usuariosProp,
 }: PantallaLoginProps) {
+  const usuariosStore = useUsuariosStore((s) => s.usuarios);
+  const actualizarUltimoAcceso = useUsuariosStore((s) => s.actualizarUltimoAcceso);
+  const usuarios = usuariosProp ?? usuariosStore;
+
   const [usuarioId, setUsuarioId] = useState(usuarios[0]?.id ?? '');
   const [pin, setPin] = useState('');
   const [intentosRestantes, setIntentosRestantes] = useState(INTENTOS_MAXIMOS);
@@ -41,8 +46,16 @@ export function PantallaLogin({
       return;
     }
 
+    // TODO: En la Entrega 2, reflejar visualmente en la UI que la cuenta está bloqueada por el administrador.
+    if (!puedeIniciarSesion(usuarioActivo)) {
+      setMensajeError('Esta cuenta está bloqueada');
+      setPin('');
+      return;
+    }
+
     if (verificarPin(usuarioActivo, pin)) {
       setMensajeError(null);
+      actualizarUltimoAcceso(usuarioActivo.id);
       registrar({
         categoria: 'sesion',
         gravedad: 'info',
@@ -77,7 +90,7 @@ export function PantallaLogin({
     }
 
     setMensajeError('PIN incorrecto');
-  }, [bloqueado, intentosRestantes, onIngresar, pin, usuarioActivo]);
+  }, [actualizarUltimoAcceso, bloqueado, intentosRestantes, onIngresar, pin, usuarioActivo]);
 
   useEffect(() => {
     if (!bloqueado) {

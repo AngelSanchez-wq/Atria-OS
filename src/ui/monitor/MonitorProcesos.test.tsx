@@ -9,11 +9,15 @@ import { PROCESO_KERNEL_BASE } from '../../kernel/processes/constantes';
 import { PCB } from '../../kernel/types';
 import { servicioAudio } from '../../system/audio/servicio';
 import { crearEvento } from '../../kernel/logs/eventos';
+import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 
 describe('MonitorProcesos', () => {
+  const usuarioAdmin = USUARIOS_SEMILLA.find((u) => u.rol === 'admin') ?? USUARIOS_SEMILLA[2];
+  const usuarioEstandar = USUARIOS_SEMILLA.find((u) => u.rol === 'estandar') ?? USUARIOS_SEMILLA[0];
+
   beforeEach(() => {
     useSesion.setState({
-      usuario: { id: 'admin', nombre: 'Admin', inicial: 'A', rol: 'admin', pin: '0000' },
+      usuario: usuarioAdmin,
     });
     useProcesos.setState({ procesos: [PROCESO_KERNEL_BASE] });
     useVentanas.setState({ ventanas: [], focusPid: null, _contadorFoco: 0 });
@@ -23,7 +27,7 @@ describe('MonitorProcesos', () => {
   describe('Control de acceso', () => {
     it('un usuario estándar no accede al monitor ni al registro', () => {
       useSesion.setState({
-        usuario: { id: 'mia', nombre: 'Mia', inicial: 'M', rol: 'estandar', pin: '1234' },
+        usuario: usuarioEstandar,
       });
 
       render(<MonitorProcesos />);

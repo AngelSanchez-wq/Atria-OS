@@ -27,12 +27,19 @@ export type DatosVentana = {
   ordenFoco: number;
 };
 
+export type RechazoAperturaApp = {
+  idApp: AppId;
+  motivo: 'app-deshabilitada' | 'memoria-insuficiente';
+};
+
 type VentanasStore = {
   ventanas: DatosVentana[];
   /** ID de la ventana con foco actualmente. */
   focusPid: string | null;
   /** Contador global de orden de foco. */
   _contadorFoco: number;
+  /** Último rechazo por límites para uso de la interfaz en la Entrega 2 */
+  ultimoRechazoApertura: RechazoAperturaApp | null;
 
   abrir: (appId: AppId, pid: number, usuarioId?: string) => void;
   cerrar: (id: string) => void;
@@ -42,6 +49,7 @@ type VentanasStore = {
   maximizar: (id: string) => void;
   enfocar: (id: string) => void;
   mover: (id: string, x: number, y: number) => void;
+  registrarRechazoApertura: (rechazo: RechazoAperturaApp | null) => void;
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -50,6 +58,9 @@ export const useVentanas = create<VentanasStore>((set, get) => ({
   ventanas: [],
   focusPid: null,
   _contadorFoco: 0,
+  ultimoRechazoApertura: null,
+
+  registrarRechazoApertura: (rechazo) => set({ ultimoRechazoApertura: rechazo }),
 
   abrir: (appId, pid, usuarioId = 'invitado') => {
     const { ventanas, _contadorFoco } = get();

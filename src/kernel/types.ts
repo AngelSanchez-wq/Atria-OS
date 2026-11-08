@@ -1,12 +1,6 @@
 export type RolUsuario = 'estandar' | 'admin';
 
-export type Usuario = {
-  id: string;
-  nombre: string;
-  inicial: string;
-  rol: RolUsuario;
-  pin: string;
-};
+export type EstadoUsuario = 'activo' | 'bloqueado';
 
 export type AppId =
   | 'focuspad'
@@ -16,6 +10,26 @@ export type AppId =
   | 'ambient'
   | 'monitor'
   | 'configuracion';
+
+export type IdApp = AppId;
+
+export type LimitesUsuario = {
+  appsHabilitadas: IdApp[];
+  maxTareasActivas: number;
+  memoriaMaximaMb: number;
+};
+
+export type Usuario = {
+  id: string;
+  nombre: string;
+  inicial: string;
+  rol: RolUsuario;
+  pin: string;
+  estado: EstadoUsuario;
+  ultimoAcceso: number | null;
+  limites: LimitesUsuario;
+  foto?: string;
+};
 
 export type Tarea = {
   id: string;

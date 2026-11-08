@@ -5,6 +5,7 @@ type AvatarProps = {
   inicial: string;
   seleccionado: boolean;
   esAdmin?: boolean;
+  imagen?: string;
   onSeleccionar: () => void;
   /** Para el grupo de radios: solo el seleccionado queda en el tab order. */
   tabIndex?: number;
@@ -15,6 +16,7 @@ export function Avatar({
   inicial,
   seleccionado,
   esAdmin = false,
+  imagen,
   onSeleccionar,
   tabIndex = 0,
 }: AvatarProps) {
@@ -39,11 +41,19 @@ export function Avatar({
       <span className="relative inline-flex">
         <span
           className={[
-            'flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold transition-shadow motion-reduce:transition-none',
+            'flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold transition-shadow motion-reduce:transition-none overflow-hidden',
             clasesCirculo,
           ].join(' ')}
         >
-          {inicial}
+          {imagen ? (
+            <img
+              src={imagen}
+              alt={nombre}
+              className="h-full w-full object-cover rounded-full"
+            />
+          ) : (
+            inicial
+          )}
         </span>
         {seleccionado ? (
           <span

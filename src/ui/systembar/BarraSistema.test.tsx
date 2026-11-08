@@ -1,16 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { formatearFechaCorta, formatearHora } from '../../hooks/useHora';
 import { useSesion } from '../../store/sesion';
-import type { Usuario } from '../../kernel/types';
+import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 import { BarraSistema } from './BarraSistema';
 
-const usuarioMia: Usuario = {
-  id: 'mia',
-  nombre: 'Mia',
-  inicial: 'M',
-  rol: 'estandar',
-  pin: '1234',
-};
+const usuarioMia = USUARIOS_SEMILLA[0];
 
 describe('BarraSistema', () => {
   beforeEach(() => {

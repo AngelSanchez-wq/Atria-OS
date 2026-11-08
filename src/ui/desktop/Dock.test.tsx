@@ -2,17 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Dock } from './Dock';
 import { useSesion } from '../../store/sesion';
+import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 
 describe('Dock', () => {
   beforeEach(() => {
     useSesion.setState({
-      usuario: {
-        id: 'mateo',
-        nombre: 'Mateo',
-        inicial: 'M',
-        rol: 'estandar',
-        pin: '5678',
-      },
+      usuario: USUARIOS_SEMILLA[1],
     });
   });
 
@@ -29,13 +24,7 @@ describe('Dock', () => {
 
   it('muestra el monitor de procesos cuando el usuario es administrador', () => {
     useSesion.setState({
-      usuario: {
-        id: 'admin',
-        nombre: 'Admin',
-        inicial: 'A',
-        rol: 'admin',
-        pin: '0000',
-      },
+      usuario: USUARIOS_SEMILLA[2],
     });
 
     render(<Dock onAbrirApp={vi.fn()} />);
