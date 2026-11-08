@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { KeyboardEvent as EventoTeclado } from 'react';
 import type { Usuario } from '../../kernel/types';
 import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
@@ -8,6 +8,7 @@ import {
   ESPERA_BLOQUEO_MS,
   INTENTOS_MAXIMOS,
 } from '../../config/login';
+import { registrar } from '../../system/logging/servicio';
 import { Avatar } from '../components/Avatar';
 import { Boton } from '../components/Boton';
 import { IndicadorPin } from '../components/IndicadorPin';
@@ -35,13 +36,19 @@ export function PantallaLogin({
     setMensajeError(null);
   }
 
-  function intentarEntrar() {
+  const intentarEntrar = useCallback(() => {
     if (!usuarioActivo || bloqueado || pin.length !== DIGITOS_PIN) {
       return;
     }
 
     if (verificarPin(usuarioActivo, pin)) {
       setMensajeError(null);
+      registrar({
+        categoria: 'sesion',
+        gravedad: 'info',
+        mensaje: `Inicio de sesión correcto de ${usuarioActivo.nombre}`,
+        usuarioId: usuarioActivo.id,
+      });
       onIngresar(usuarioActivo);
       return;
     }
@@ -50,14 +57,27 @@ export function PantallaLogin({
     setPin('');
     setIntentosRestantes(siguientes);
 
+    registrar({
+      categoria: 'seguridad',
+      gravedad: 'aviso',
+      mensaje: `PIN incorrecto para ${usuarioActivo.nombre} (${siguientes} intento${siguientes === 1 ? '' : 's'} restante${siguientes === 1 ? '' : 's'})`,
+      usuarioId: usuarioActivo.id,
+    });
+
     if (siguientes <= 0) {
       setBloqueado(true);
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'aviso',
+        mensaje: `Bloqueo por intentos agotados para ${usuarioActivo.nombre}`,
+        usuarioId: usuarioActivo.id,
+      });
       setMensajeError('Espera un momento antes de intentarlo de nuevo');
       return;
     }
 
     setMensajeError('PIN incorrecto');
-  }
+  }, [bloqueado, intentosRestantes, onIngresar, pin, usuarioActivo]);
 
   useEffect(() => {
     if (!bloqueado) {
@@ -82,27 +102,7 @@ export function PantallaLogin({
 
       if (evento.key === 'Enter') {
         evento.preventDefault();
-        if (!usuarioActivo || pin.length !== DIGITOS_PIN) {
-          return;
-        }
-
-        if (verificarPin(usuarioActivo, pin)) {
-          setMensajeError(null);
-          onIngresar(usuarioActivo);
-          return;
-        }
-
-        const siguientes = intentosRestantes - 1;
-        setPin('');
-        setIntentosRestantes(siguientes);
-
-        if (siguientes <= 0) {
-          setBloqueado(true);
-          setMensajeError('Espera un momento antes de intentarlo de nuevo');
-          return;
-        }
-
-        setMensajeError('PIN incorrecto');
+        intentarEntrar();
         return;
       }
 
@@ -122,7 +122,7 @@ export function PantallaLogin({
 
     window.addEventListener('keydown', alPulsarTecla);
     return () => window.removeEventListener('keydown', alPulsarTecla);
-  }, [bloqueado, pin, intentosRestantes, usuarioActivo, onIngresar]);
+  }, [bloqueado, intentarEntrar, pin]);
 
   function alTeclaGrupo(evento: EventoTeclado<HTMLDivElement>) {
     if (!usuarioActivo) {

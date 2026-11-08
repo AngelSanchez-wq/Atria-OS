@@ -13,6 +13,7 @@ import { AppId } from '../../kernel/types';
 import { APPS } from '../../config/apps';
 import { BarraSistema } from '../systembar/BarraSistema';
 import { AvisoUrgente } from '../components/AvisoUrgente';
+import { registrar } from '../../system/logging/servicio';
 import { Dock } from './Dock';
 import { TarjetaTareaActiva } from './TarjetaTareaActiva';
 import { FranjaPendientes } from './FranjaPendientes';
@@ -122,10 +123,22 @@ export function PantallaEscritorio({
   };
 
   const manejarBloquear = () => {
+    registrar({
+      categoria: 'energia',
+      gravedad: 'info',
+      mensaje: 'Sistema bloqueado',
+      usuarioId: usuario?.id,
+    });
     transicionar('bloqueado');
   };
 
   const manejarSuspender = () => {
+    registrar({
+      categoria: 'energia',
+      gravedad: 'info',
+      mensaje: 'Sistema suspendido',
+      usuarioId: usuario?.id,
+    });
     const { procesosPausados, estadosPrevios } = pausarProcesosPorSuspension(procesos);
     guardarEstadosPrevios(estadosPrevios);
     useProcesos.setState({ procesos: procesosPausados });

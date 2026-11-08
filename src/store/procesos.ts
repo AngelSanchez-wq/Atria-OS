@@ -3,6 +3,7 @@ import { PCB, AppId, EstadoProceso } from '../kernel/types';
 import { crearProceso, cambiarEstado, terminarProceso } from '../kernel/processes/proceso';
 import { PROCESO_KERNEL_BASE, PID_KERNEL } from '../kernel/processes/constantes';
 import { APPS } from '../config/apps';
+import { registrar } from '../system/logging/servicio';
 
 type ProcesosStore = {
   procesos: PCB[];
@@ -11,7 +12,10 @@ type ProcesosStore = {
   /** Cambia el estado de un proceso por su PID. */
   cambiarEstado: (pid: number, estado: EstadoProceso) => void;
   /** Marca un proceso como Terminado por su PID (los procesos protegidos no se pueden terminar). */
-  terminar: (pid: number) => void;
+  terminar: (
+    pid: number,
+    opciones?: { autor?: string; desdeMonitor?: boolean }
+  ) => void;
 };
 
 export const useProcesos = create<ProcesosStore>((set, get) => ({
@@ -36,7 +40,22 @@ export const useProcesos = create<ProcesosStore>((set, get) => ({
       procesos,
     });
 
-    if (!resultado.ok) return null;
+    if (!resultado.ok) {
+      registrar({
+        categoria: 'proceso',
+        gravedad: 'aviso',
+        mensaje: `Memoria insuficiente al abrir ${info.nombre}`,
+        usuarioId,
+      });
+      return null;
+    }
+
+    registrar({
+      categoria: 'proceso',
+      gravedad: 'info',
+      mensaje: `Proceso creado: ${info.nombre} (PID ${resultado.proceso.pid})`,
+      usuarioId,
+    });
 
     set({ procesos: [...procesos, resultado.proceso] });
     return resultado.proceso;
@@ -50,8 +69,24 @@ export const useProcesos = create<ProcesosStore>((set, get) => ({
     }));
   },
 
-  terminar: (pid) => {
+  terminar: (pid, opciones) => {
     if (pid === PID_KERNEL) return; // Proceso protegido del kernel
+    const proceso = get().procesos.find((p) => p.pid === pid);
+    if (proceso && proceso.estado !== 'Terminado') {
+      const infoApp = APPS[proceso.nombre as AppId];
+      const nombreApp = infoApp ? infoApp.nombre : proceso.nombre;
+      const mensaje = opciones?.desdeMonitor
+        ? `Proceso terminado desde el monitor: ${nombreApp} (PID ${pid}) por ${opciones.autor ?? 'Administrador'}`
+        : `Proceso terminado: ${nombreApp} (PID ${pid})`;
+
+      registrar({
+        categoria: 'proceso',
+        gravedad: 'info',
+        mensaje,
+        usuarioId: proceso.usuarioId,
+      });
+    }
+
     set((s) => ({
       procesos: s.procesos.map((p) =>
         p.pid === pid ? terminarProceso(p) : p
