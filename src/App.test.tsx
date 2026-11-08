@@ -310,5 +310,77 @@ describe('App', () => {
     expect(screen.queryByText('Tarea completada')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument();
   });
+
+  it('abre la app Burble desde el dock y muestra su ventana', async () => {
+    render(<App />);
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    act(() => {
+      screen.getByRole('radio', { name: 'Mateo' }).click();
+    });
+    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    act(() => {
+      for (const char of pinMateo) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Empezar' }).click();
+    });
+
+    // Abrir Burble desde el dock
+    const btnBurble = screen.getByRole('button', { name: 'Burble' });
+    act(() => {
+      fireEvent.click(btnBurble);
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Burble' })).toBeInTheDocument();
+  });
+
+  it('abre la app Burble desde la campana de notificaciones y la enfoca si ya está abierta', async () => {
+    render(<App />);
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    act(() => {
+      screen.getByRole('radio', { name: 'Mateo' }).click();
+    });
+    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    act(() => {
+      for (const char of pinMateo) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Empezar' }).click();
+    });
+
+    // Clic en la campana de notificaciones en la barra de sistema
+    const btnCampana = screen.getByRole('button', { name: /Notificaciones/ });
+    act(() => {
+      fireEvent.click(btnCampana);
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Burble' })).toBeInTheDocument();
+
+    // Si ya está abierta, volver a hacer clic la enfoca sin crear otra ventana
+    act(() => {
+      fireEvent.click(btnCampana);
+    });
+
+    const ventanasBurble = screen.getAllByRole('dialog', { name: 'Burble' });
+    expect(ventanasBurble).toHaveLength(1);
+  });
 });
 

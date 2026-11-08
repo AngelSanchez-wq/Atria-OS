@@ -63,7 +63,26 @@ export type Notificacion = {
   /** Escala de 1 (baja) a 5 (urgente). */
   urgencia: number;
   titulo: string;
+  /** Frase corta descriptiva opcional. */
+  detalle?: string;
   /** Timestamp epoch en ms. Sin Date: kernel puro. */
   creadaEn: number;
   estado: EstadoNotificacion;
+};
+
+export type EstadoSegmentoRevision =
+  | 'revisada'
+  | 'actual'
+  | 'pendiente'
+  | 'pendiente-urgente'
+  | 'pospuesta';
+
+export type SegmentoRevision = {
+  id: string;
+  estado: EstadoSegmentoRevision;
+};
+
+export type EstadoProgresoRevision = {
+  revisadas: number;
+  total: number;
 };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSesion } from '../../store/sesion';
 import { useEnergia } from '../../store/energia';
 import { useProcesos } from '../../store/procesos';
+import { useNotificaciones, seleccionarSinLeer } from '../../store/notificaciones';
 import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
 import { TAREAS_SEMILLA } from '../../kernel/tasks/tareas-semilla';
 import { siguienteSugerencia } from '../../kernel/tasks/sugerencias';
@@ -33,6 +34,7 @@ export function PantallaBienvenida({
   } = useEnergia();
 
   const [indiceTarea, setIndiceTarea] = useState(0);
+  const notificacionesSinLeer = useNotificaciones(seleccionarSinLeer);
 
   const nombre = usuario?.nombre || 'Usuario';
   const tareas = TAREAS_SEMILLA;
@@ -56,6 +58,7 @@ export function PantallaBienvenida({
   return (
     <div className="flex h-full w-full flex-col bg-bg">
       <BarraSistema
+        notificaciones={notificacionesSinLeer}
         onBloquear={manejarBloquear}
         onSuspender={manejarSuspender}
         onReiniciar={solicitarReiniciar}

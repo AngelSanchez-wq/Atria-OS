@@ -4,12 +4,14 @@ import { useVentanas } from '../../store/ventanas';
 import { useProcesos } from '../../store/procesos';
 import { useSesion } from '../../store/sesion';
 import { useEnergia } from '../../store/energia';
+import { useNotificaciones, seleccionarSinLeer } from '../../store/notificaciones';
 import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
 import { estadoBuho } from '../../kernel/tasks/buho';
 import { PantallaLogro } from '../achievement/PantallaLogro';
 import { AppId } from '../../kernel/types';
 import { APPS } from '../../config/apps';
 import { BarraSistema } from '../systembar/BarraSistema';
+import { AvisoUrgente } from '../components/AvisoUrgente';
 import { Dock } from './Dock';
 import { TarjetaTareaActiva } from './TarjetaTareaActiva';
 import { FranjaPendientes } from './FranjaPendientes';
@@ -49,6 +51,10 @@ export function PantallaEscritorio({
     solicitarReiniciar,
     guardarEstadosPrevios,
   } = useEnergia();
+
+  const notificacionesSinLeer = useNotificaciones(seleccionarSinLeer);
+  const avisoUrgente = useNotificaciones((s) => s.avisoUrgente);
+  const descartarAvisoUrgente = useNotificaciones((s) => s.descartarAvisoUrgente);
 
   const [avisoMemoria, setAvisoMemoria] = useState<string | null>(null);
 
@@ -133,6 +139,8 @@ export function PantallaEscritorio({
       <div className="flex h-full w-full flex-col bg-bg">
         <BarraSistema
           titulo={tituloBarra}
+          notificaciones={notificacionesSinLeer}
+          onNotificaciones={() => manejarAbrirApp('burble')}
           estadoBuho="logro"
           onBloquear={manejarBloquear}
           onSuspender={manejarSuspender}
@@ -140,6 +148,10 @@ export function PantallaEscritorio({
           onApagar={solicitarApagar}
           onCambiarUsuario={onCambiarUsuario}
           onCerrarSesion={onCerrarSesion}
+        />
+        <AvisoUrgente
+          aviso={avisoUrgente}
+          onDescartar={descartarAvisoUrgente}
         />
         <div className="relative flex flex-1 overflow-hidden">
           <Dock
@@ -168,6 +180,8 @@ export function PantallaEscritorio({
       <div className="flex h-full w-full flex-col bg-bg">
         <BarraSistema
           titulo={tituloBarra}
+          notificaciones={notificacionesSinLeer}
+          onNotificaciones={() => manejarAbrirApp('burble')}
           estadoBuho={estadoActualBuho}
           onBloquear={manejarBloquear}
           onSuspender={manejarSuspender}
@@ -175,6 +189,10 @@ export function PantallaEscritorio({
           onApagar={solicitarApagar}
           onCambiarUsuario={onCambiarUsuario}
           onCerrarSesion={onCerrarSesion}
+        />
+        <AvisoUrgente
+          aviso={avisoUrgente}
+          onDescartar={descartarAvisoUrgente}
         />
         <main className="flex flex-1 items-center justify-center">
           <p className="text-xl text-muted">
@@ -189,6 +207,8 @@ export function PantallaEscritorio({
     <div className="flex h-full w-full flex-col bg-bg">
       <BarraSistema
         titulo={tituloBarra}
+        notificaciones={notificacionesSinLeer}
+        onNotificaciones={() => manejarAbrirApp('burble')}
         estadoBuho={estadoActualBuho}
         onBloquear={manejarBloquear}
         onSuspender={manejarSuspender}
@@ -196,6 +216,10 @@ export function PantallaEscritorio({
         onApagar={solicitarApagar}
         onCambiarUsuario={onCambiarUsuario}
         onCerrarSesion={onCerrarSesion}
+      />
+      <AvisoUrgente
+        aviso={avisoUrgente}
+        onDescartar={descartarAvisoUrgente}
       />
 
       {avisoMemoria && (

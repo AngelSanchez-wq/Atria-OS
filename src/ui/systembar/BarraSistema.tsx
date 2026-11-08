@@ -3,7 +3,6 @@ import { Bell, Power, Volume2, Wifi } from 'lucide-react';
 import {
   ALTURA_BARRA_CLASE,
   CLASE_CIRCULO_BUHO,
-  NOTIFICACIONES_SIMULADAS,
   TAMANO_BUHO_BARRA,
   TAMANO_ICONO_BARRA,
 } from '../../config/systembar';
@@ -37,7 +36,7 @@ type BarraSistemaProps = {
 
 export function BarraSistema({
   titulo,
-  notificaciones = NOTIFICACIONES_SIMULADAS,
+  notificaciones = 0,
   estadoBuho = 'foco',
   onVolver,
   onWifi,

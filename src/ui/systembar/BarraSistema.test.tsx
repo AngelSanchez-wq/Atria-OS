@@ -28,7 +28,7 @@ describe('BarraSistema', () => {
   it('muestra hora, batería, contador e inicial del usuario', () => {
     const momento = new Date(2020, 8, 30, 10, 42, 0);
 
-    render(<BarraSistema />);
+    render(<BarraSistema notificaciones={3} />);
 
     expect(screen.getByText(formatearHora(momento))).toBeInTheDocument();
     expect(screen.getByText(formatearFechaCorta(momento))).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('BarraSistema', () => {
   });
 
   it('expone aria-label en los botones de estado', () => {
-    render(<BarraSistema />);
+    render(<BarraSistema notificaciones={3} />);
 
     expect(screen.getByRole('button', { name: 'Wi‑Fi' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Volumen' })).toBeInTheDocument();
@@ -68,6 +68,7 @@ describe('BarraSistema', () => {
 
     render(
       <BarraSistema
+        notificaciones={3}
         onVolver={onVolver}
         onWifi={onWifi}
         onVolumen={onVolumen}
@@ -87,6 +88,12 @@ describe('BarraSistema', () => {
     expect(onVolumen).toHaveBeenCalledTimes(1);
     expect(onBateria).toHaveBeenCalledTimes(1);
     expect(onNotificaciones).toHaveBeenCalledTimes(1);
+  });
+
+  it('no muestra el globo contador cuando no hay notificaciones sin leer', () => {
+    render(<BarraSistema notificaciones={0} />);
+    expect(screen.getByRole('button', { name: 'Notificaciones, 0' })).toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
   it('despliega el menú de encendido y ejecuta las acciones seleccionadas', () => {

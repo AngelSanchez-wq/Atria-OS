@@ -6,6 +6,13 @@ import {
   contarPorTipo,
   entregarLote,
   marcarLeidas,
+  marcarLeida,
+  posponer,
+  colaDeRevision,
+  siguientePendiente,
+  progresoRevision,
+  quedanPospuestas,
+  segmentosRevision,
   contarSinLeer,
   proximaRevision,
 } from './reglas';
@@ -194,6 +201,208 @@ describe('reglas de interrupción y notificaciones', () => {
   describe('proximaRevision', () => {
     it('suma correctamente el intervalo al timestamp actual', () => {
       expect(proximaRevision(1000, 120000)).toBe(121000);
+    });
+  });
+
+  describe('marcarLeida', () => {
+    it('marca como leída únicamente la notificación indicada por id', () => {
+      const lista: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+      ];
+
+      const resultado = marcarLeida(lista, '1');
+      expect(resultado[0].estado).toBe('leida');
+      expect(resultado[1].estado).toBe('entregada');
+    });
+
+    it('devuelve la lista sin cambios si el id no existe', () => {
+      const lista: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+      ];
+      expect(marcarLeida(lista, '999')).toEqual(lista);
+    });
+  });
+
+  describe('posponer', () => {
+    it('manda el elemento al final de la cola sin marcarlo como leído', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'Primero', creadaEn: 1, estado: 'entregada' },
+        { id: '2', tipo: 'recordatorios', urgencia: 3, titulo: 'Segundo', creadaEn: 2, estado: 'entregada' },
+        { id: '3', tipo: 'sistema', urgencia: 2, titulo: 'Tercero', creadaEn: 3, estado: 'entregada' },
+      ];
+
+      const resultado = posponer(cola, '1');
+      expect(resultado.map((n) => n.id)).toEqual(['2', '3', '1']);
+      expect(resultado.find((n) => n.id === '1')?.estado).toBe('entregada');
+    });
+
+    it('posponer la última notificación la mantiene al final de la cola', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+      ];
+      const resultado = posponer(cola, '2');
+      expect(resultado.map((n) => n.id)).toEqual(['1', '2']);
+    });
+
+    it('funciona correctamente con una sola notificación', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+      ];
+      const resultado = posponer(cola, '1');
+      expect(resultado).toEqual(cola);
+    });
+
+    it('retorna la misma cola vacía o ante id inexistente', () => {
+      expect(posponer([], '1')).toEqual([]);
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+      ];
+      expect(posponer(cola, '999')).toEqual(cola);
+    });
+  });
+
+  describe('colaDeRevision', () => {
+    it('devuelve cola vacía si no hay notificaciones entregadas', () => {
+      const lista: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'retenida' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'leida' },
+      ];
+      expect(colaDeRevision(lista)).toEqual([]);
+    });
+
+    it('ordena las urgentes primero respetando el orden de llegada en cada nivel', () => {
+      const lista: Notificacion[] = [
+        { id: 'normal-1', tipo: 'mensajes', urgencia: 3, titulo: 'N1', creadaEn: 100, estado: 'entregada' },
+        { id: 'urgente-1', tipo: 'alertas', urgencia: 5, titulo: 'U1', creadaEn: 200, estado: 'entregada' },
+        { id: 'normal-2', tipo: 'sistema', urgencia: 2, titulo: 'N2', creadaEn: 300, estado: 'entregada' },
+        { id: 'urgente-2', tipo: 'alertas', urgencia: 5, titulo: 'U2', creadaEn: 400, estado: 'entregada' },
+      ];
+
+      const cola = colaDeRevision(lista);
+      expect(cola.map((n) => n.id)).toEqual(['urgente-1', 'urgente-2', 'normal-1', 'normal-2']);
+    });
+  });
+
+  describe('siguientePendiente', () => {
+    it('retorna null en cola vacía', () => {
+      expect(siguientePendiente([], null)).toBeNull();
+      expect(siguientePendiente([], '1')).toBeNull();
+    });
+
+    it('retorna la primera pendiente cuando actualId es null', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+      ];
+      expect(siguientePendiente(cola, null)).toBe('2');
+    });
+
+    it('avanza a la siguiente no leída', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+      ];
+      expect(siguientePendiente(cola, '1')).toBe('2');
+    });
+
+    it('encuentra elementos pospuestos al inicio si ya no hay posteriores', () => {
+      const cola: Notificacion[] = [
+        { id: 'pospuesta', tipo: 'mensajes', urgencia: 3, titulo: 'P', creadaEn: 1, estado: 'entregada' },
+        { id: 'actual', tipo: 'sistema', urgencia: 2, titulo: 'A', creadaEn: 2, estado: 'leida' },
+      ];
+      expect(siguientePendiente(cola, 'actual')).toBe('pospuesta');
+    });
+
+    it('devuelve null si todas están revisadas', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'leida' },
+      ];
+      expect(siguientePendiente(cola, '1')).toBeNull();
+    });
+
+    it('si el id actual no existe, devuelve la primera pendiente', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+      ];
+      expect(siguientePendiente(cola, 'inexistente')).toBe('1');
+    });
+
+    it('ignora los IDs especificados en la lista de ignoradas / pospuestas', () => {
+      const cola: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+      ];
+      expect(siguientePendiente(cola, '1', ['2'])).toBeNull();
+    });
+  });
+
+  describe('progresoRevision', () => {
+    it('calcula correctamente el progreso en lista vacía', () => {
+      expect(progresoRevision([])).toEqual({ revisadas: 0, total: 0 });
+    });
+
+    it('cuenta revisadas frente al total', () => {
+      const lote: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+        { id: '2', tipo: 'alertas', urgencia: 5, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+        { id: '3', tipo: 'sistema', urgencia: 2, titulo: 'C', creadaEn: 3, estado: 'leida' },
+      ];
+      expect(progresoRevision(lote)).toEqual({ revisadas: 2, total: 3 });
+    });
+
+    it('todas revisadas', () => {
+      const lote: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'leida' },
+      ];
+      expect(progresoRevision(lote)).toEqual({ revisadas: 2, total: 2 });
+    });
+  });
+
+  describe('quedanPospuestas', () => {
+    it('devuelve false para lista o ids vacíos', () => {
+      expect(quedanPospuestas([], [])).toBe(false);
+      expect(quedanPospuestas([], ['1'])).toBe(false);
+    });
+
+    it('devuelve true si hay alguna pospuesta no leída', () => {
+      const lista: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'entregada' },
+      ];
+      expect(quedanPospuestas(lista, ['1'])).toBe(true);
+    });
+
+    it('devuelve false si todas las pospuestas ya fueron leídas', () => {
+      const lista: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+      ];
+      expect(quedanPospuestas(lista, ['1'])).toBe(false);
+    });
+  });
+
+  describe('segmentosRevision', () => {
+    it('genera segmentos con los 5 estados en orden de revisión', () => {
+      const lote: Notificacion[] = [
+        { id: '1', tipo: 'mensajes', urgencia: 3, titulo: 'A', creadaEn: 1, estado: 'leida' },
+        { id: '2', tipo: 'sistema', urgencia: 2, titulo: 'B', creadaEn: 2, estado: 'entregada' },
+        { id: '3', tipo: 'recordatorios', urgencia: 3, titulo: 'C', creadaEn: 3, estado: 'entregada' },
+        { id: '4', tipo: 'alertas', urgencia: 5, titulo: 'D', creadaEn: 4, estado: 'entregada' },
+        { id: '5', tipo: 'mensajes', urgencia: 2, titulo: 'E', creadaEn: 5, estado: 'entregada' },
+      ];
+
+      // id '2' es la actual, '3' es pospuesta, '4' es pendiente urgente, '5' es pendiente
+      const segmentos = segmentosRevision(lote, '2', ['3']);
+
+      expect(segmentos).toEqual([
+        { id: '1', estado: 'revisada' },
+        { id: '2', estado: 'actual' },
+        { id: '3', estado: 'pospuesta' },
+        { id: '4', estado: 'pendiente-urgente' },
+        { id: '5', estado: 'pendiente' },
+      ]);
     });
   });
 });

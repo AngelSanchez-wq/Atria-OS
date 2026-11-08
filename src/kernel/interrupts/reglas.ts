@@ -3,6 +3,8 @@ import {
   NivelUrgencia,
   DecisionEntrega,
   TipoNotificacion,
+  SegmentoRevision,
+  EstadoProgresoRevision,
 } from '../types';
 
 /**
@@ -129,4 +131,136 @@ export function contarSinLeer(notificaciones: Notificacion[]): number {
  */
 export function proximaRevision(ahora: number, intervalo: number): number {
   return ahora + intervalo;
+}
+
+/**
+ * Marca como 'leida' una notificación individual por su id.
+ */
+export function marcarLeida(
+  lista: Notificacion[],
+  id: string
+): Notificacion[] {
+  return lista.map((n) => (n.id === id ? { ...n, estado: 'leida' } : n));
+}
+
+/**
+ * Mueve la notificación con el ID indicado al final de la cola sin marcarla como leída.
+ */
+export function posponer(
+  cola: Notificacion[],
+  id: string
+): Notificacion[] {
+  const indice = cola.findIndex((n) => n.id === id);
+  if (indice === -1) return cola;
+  const elemento = cola[indice];
+  return [...cola.slice(0, indice), ...cola.slice(indice + 1), elemento];
+}
+
+/**
+ * Construye la cola de revisión: notificaciones entregadas y no leídas,
+ * situando las urgentes (urgencia >= 5) primero y respetando el orden de llegada.
+ */
+export function colaDeRevision(lista: Notificacion[]): Notificacion[] {
+  const entregadas = lista.filter((n) => n.estado === 'entregada');
+  const urgentes = entregadas.filter((n) => n.urgencia >= 5);
+  const resto = entregadas.filter((n) => n.urgencia < 5);
+  return [...urgentes, ...resto];
+}
+
+/**
+ * Determina el ID de la siguiente notificación pendiente de revisión.
+ * Busca primero a partir de la posición actual hacia adelante; si no hay más,
+ * busca desde el inicio (para cubrir notificaciones no leídas anteriores).
+ * Permite omitir una lista opcional de IDs (por ejemplo, notificaciones pospuestas).
+ */
+export function siguientePendiente(
+  cola: Notificacion[],
+  actualId: string | null,
+  idsIgnorar: string[] = []
+): string | null {
+  if (cola.length === 0) return null;
+
+  const ignorarSet = new Set(idsIgnorar);
+
+  if (actualId === null) {
+    const primera = cola.find((n) => n.estado !== 'leida' && !ignorarSet.has(n.id));
+    return primera ? primera.id : null;
+  }
+
+  const indiceActual = cola.findIndex((n) => n.id === actualId);
+  if (indiceActual === -1) {
+    const primera = cola.find((n) => n.estado !== 'leida' && !ignorarSet.has(n.id));
+    return primera ? primera.id : null;
+  }
+
+  // 1. Buscar después de la actual
+  for (let i = indiceActual + 1; i < cola.length; i++) {
+    if (cola[i].estado !== 'leida' && !ignorarSet.has(cola[i].id)) {
+      return cola[i].id;
+    }
+  }
+
+  // 2. Si no hay posteriores, buscar anteriores (sin incluir las ignoradas)
+  for (let i = 0; i < indiceActual; i++) {
+    if (cola[i].estado !== 'leida' && !ignorarSet.has(cola[i].id)) {
+      return cola[i].id;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Calcula el progreso de la revisión: total de notificaciones y cuántas han sido leídas.
+ */
+export function progresoRevision(
+  lista: Notificacion[]
+): EstadoProgresoRevision {
+  const total = lista.length;
+  const revisadas = lista.filter((n) => n.estado === 'leida').length;
+  return { revisadas, total };
+}
+
+/**
+ * Evalúa si quedan notificaciones pospuestas que aún no han sido marcadas como leídas.
+ */
+export function quedanPospuestas(
+  lista: Notificacion[],
+  idsPospuestas: string[] = []
+): boolean {
+  if (!idsPospuestas || idsPospuestas.length === 0) return false;
+  const conjuntoPospuestas = new Set(idsPospuestas);
+  return lista.some((n) => conjuntoPospuestas.has(n.id) && n.estado !== 'leida');
+}
+
+/**
+ * Genera el arreglo de segmentos para la barra de revisión, en orden de la cola:
+ * - 'revisada': ya leída
+ * - 'actual': la que se está revisando en este momento
+ * - 'pospuesta': no leída y postergada previamente
+ * - 'pendiente-urgente': no leída con urgencia >= 5
+ * - 'pendiente': no leída normal o baja
+ */
+export function segmentosRevision(
+  lista: Notificacion[],
+  idActual: string | null,
+  idsPospuestas: string[] = []
+): SegmentoRevision[] {
+  const conjuntoPospuestas = new Set(idsPospuestas);
+
+  return lista.map((n) => {
+    if (n.estado === 'leida') {
+      return { id: n.id, estado: 'revisada' };
+    }
+    if (n.id === idActual) {
+      return { id: n.id, estado: 'actual' };
+    }
+    if (conjuntoPospuestas.has(n.id)) {
+      return { id: n.id, estado: 'pospuesta' };
+    }
+    if (n.urgencia >= 5) {
+      return { id: n.id, estado: 'pendiente-urgente' };
+    }
+    return { id: n.id, estado: 'pendiente' };
+  });
 }

@@ -55,6 +55,7 @@ export function iniciarSimuladorNotificaciones(
       tipo: semilla.tipo,
       urgencia: semilla.urgencia,
       titulo: semilla.titulo,
+      detalle: semilla.detalle,
     });
 
     contadorGeneradas++;

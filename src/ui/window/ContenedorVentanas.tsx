@@ -8,6 +8,7 @@ import { IframeApp } from './IframeApp';
 import { MarcadorApp } from './MarcadorApp';
 import { MonitorProcesos } from '../monitor/MonitorProcesos';
 import { Ambient } from '../../apps/ambient/Ambient';
+import { Burble } from '../../apps/burble/Burble';
 import { servicioAudio } from '../../system/audio/servicio';
 
 export function ContenedorVentanas() {
@@ -67,6 +68,8 @@ export function ContenedorVentanas() {
                 <MonitorProcesos />
               ) : ventana.appId === 'ambient' ? (
                 <Ambient />
+              ) : ventana.appId === 'burble' ? (
+                <Burble />
               ) : info.modo === 'ventana' && info.url ? (
                 <IframeApp url={info.url} nombreApp={info.nombre} />
               ) : (
