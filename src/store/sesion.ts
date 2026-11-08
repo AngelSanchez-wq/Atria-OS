@@ -6,6 +6,7 @@ export type EstadoTareasUsuario = {
   pendientes: Tarea[];
   estado: 'en-curso' | 'pausada';
   segundosTranscurridos: number;
+  iniciada?: boolean;
 };
 
 type SesionEstado = {

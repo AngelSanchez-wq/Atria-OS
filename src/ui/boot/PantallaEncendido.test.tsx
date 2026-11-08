@@ -29,7 +29,7 @@ describe('PantallaEncendido', () => {
     expect(
       screen.getByRole('progressbar', { name: 'Iniciando el sistema' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Búho en reposo' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Atria-OS, en reposo' })).toBeInTheDocument();
 
     await act(async () => {
       await vi.runAllTimersAsync();

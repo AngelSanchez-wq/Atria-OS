@@ -31,6 +31,9 @@ describe('App', () => {
       pendientes: [],
       estado: 'en-curso',
       segundosTranscurridos: 0,
+      ultimaTerminada: null,
+      enLogro: false,
+      iniciada: false,
     });
     useEnergia.setState({
       estado: 'encendiendo',
@@ -255,6 +258,55 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: 'Ambient' })).toBeInTheDocument();
     expect(screen.getByText('Sonido de fondo')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lluvia' })).toBeInTheDocument();
+  });
+
+  it('soporta el flujo completo de terminar tarea, ver logro y pasar a la siguiente tarea', async () => {
+    render(<App />);
+
+    // 1. Encendido
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    // 2. Login con Mateo
+    act(() => {
+      screen.getByRole('radio', { name: 'Mateo' }).click();
+    });
+    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    act(() => {
+      for (const char of pinMateo) {
+        fireEvent.keyDown(window, { key: char });
+      }
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Entrar' }).click();
+    });
+
+    // 3. Bienvenida: Empezar primera tarea
+    expect(screen.getByText('Hola, Mateo')).toBeInTheDocument();
+    act(() => {
+      screen.getByRole('button', { name: 'Empezar' }).click();
+    });
+
+    // 4. Escritorio con tarea activa
+    expect(screen.getByRole('button', { name: 'Terminar' })).toBeInTheDocument();
+
+    // 5. Terminar tarea -> Pantalla de logro
+    act(() => {
+      screen.getByRole('button', { name: 'Terminar' }).click();
+    });
+
+    expect(screen.getByText('Tarea completada')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeInTheDocument();
+
+    // 6. Avanzar temporizador del logro (3000 ms) -> Vuelve al escritorio con la siguiente tarea
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    // Se oculta la pantalla de logro y vuelve al escritorio con botón Pausar
+    expect(screen.queryByText('Tarea completada')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pausar' })).toBeInTheDocument();
   });
 });
 

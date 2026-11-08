@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { Tarea } from '../kernel/types';
-import { terminarTarea } from '../kernel/tasks/transiciones';
+import {
+  iniciarLogro,
+  continuarLogro,
+  type InfoTareaTerminada,
+} from '../kernel/tasks/transiciones';
 
 export type EstadoTarea = 'en-curso' | 'pausada';
 
@@ -9,10 +13,14 @@ type TareasStore = {
   estado: EstadoTarea;
   segundosTranscurridos: number;
   pendientes: Tarea[];
+  ultimaTerminada: InfoTareaTerminada | null;
+  enLogro: boolean;
+  iniciada: boolean;
   empezar: (tarea: Tarea, restoPendientes?: Tarea[]) => void;
   pausar: () => void;
   reanudar: () => void;
   terminar: () => void;
+  continuarTrasLogro: () => void;
   avanzar: (segundos: number) => void;
 };
 
@@ -21,6 +29,9 @@ export const useTareas = create<TareasStore>((set) => ({
   estado: 'en-curso',
   segundosTranscurridos: 0,
   pendientes: [],
+  ultimaTerminada: null,
+  enLogro: false,
+  iniciada: false,
 
   empezar: (tarea, restoPendientes = []) =>
     set({
@@ -28,6 +39,9 @@ export const useTareas = create<TareasStore>((set) => ({
       estado: 'en-curso',
       segundosTranscurridos: 0,
       pendientes: restoPendientes,
+      enLogro: false,
+      ultimaTerminada: null,
+      iniciada: true,
     }),
 
   pausar: () =>
@@ -43,12 +57,27 @@ export const useTareas = create<TareasStore>((set) => ({
   terminar: () =>
     set((state) => {
       if (!state.tareaActiva) return state;
-      const { siguienteActiva, nuevasPendientes } = terminarTarea(state.pendientes);
+      const resLogro = iniciarLogro(
+        state.tareaActiva,
+        state.segundosTranscurridos
+      );
       return {
-        tareaActiva: siguienteActiva,
-        estado: 'en-curso',
-        segundosTranscurridos: 0,
-        pendientes: nuevasPendientes,
+        ...state,
+        ...resLogro,
+      };
+    }),
+
+  continuarTrasLogro: () =>
+    set((state) => {
+      const res = continuarLogro(state.pendientes);
+      return {
+        ...state,
+        tareaActiva: res.siguienteActiva,
+        pendientes: res.nuevasPendientes,
+        enLogro: res.enLogro,
+        ultimaTerminada: res.ultimaTerminada,
+        segundosTranscurridos: res.segundosTranscurridos,
+        estado: res.estado,
       };
     }),
 
@@ -60,3 +89,4 @@ export const useTareas = create<TareasStore>((set) => ({
       return { segundosTranscurridos: nuevoTiempo };
     }),
 }));
+

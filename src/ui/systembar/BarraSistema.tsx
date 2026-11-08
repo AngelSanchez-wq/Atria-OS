@@ -19,6 +19,7 @@ import { MenuUsuario } from './MenuUsuario';
 type BarraSistemaProps = {
   titulo?: string;
   notificaciones?: number;
+  estadoBuho?: 'reposo' | 'foco' | 'logro';
   onVolver?: () => void;
   onWifi?: () => void;
   onVolumen?: () => void;
@@ -37,6 +38,7 @@ type BarraSistemaProps = {
 export function BarraSistema({
   titulo,
   notificaciones = NOTIFICACIONES_SIMULADAS,
+  estadoBuho = 'foco',
   onVolver,
   onWifi,
   onVolumen,
@@ -96,7 +98,7 @@ export function BarraSistema({
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className={CLASE_CIRCULO_BUHO}>
-          <Buho estado="foco" tamano={TAMANO_BUHO_BARRA} />
+          <Buho estado={estadoBuho} tamano={TAMANO_BUHO_BARRA} />
         </span>
         {onVolver ? (
           <button

@@ -7,8 +7,14 @@ import { useProcesos } from '../../store/procesos';
 import { Tarea } from '../../kernel/types';
 
 vi.mock('../systembar/BarraSistema', () => ({
-  BarraSistema: ({ titulo }: { titulo?: string }) => (
-    <div data-testid="barra-sistema">
+  BarraSistema: ({
+    titulo,
+    estadoBuho,
+  }: {
+    titulo?: string;
+    estadoBuho?: string;
+  }) => (
+    <div data-testid="barra-sistema" data-estadobuho={estadoBuho}>
       {titulo && <span data-testid="titulo-barra">{titulo}</span>}
     </div>
   ),
@@ -30,6 +36,9 @@ describe('PantallaEscritorio', () => {
       pendientes: [],
       estado: 'en-curso',
       segundosTranscurridos: 0,
+      ultimaTerminada: null,
+      enLogro: false,
+      iniciada: false,
     });
     useVentanas.setState({
       ventanas: [],
@@ -45,7 +54,8 @@ describe('PantallaEscritorio', () => {
 
   it('muestra el estado vacío cuando no hay tarea activa', () => {
     render(<PantallaEscritorio />);
-    expect(screen.getByText(/Logro: pendiente/)).toBeInTheDocument();
+    expect(screen.getByText('No tienes tareas pendientes')).toBeInTheDocument();
+    expect(screen.getByTestId('barra-sistema')).toHaveAttribute('data-estadobuho', 'reposo');
   });
 
   it('muestra la tarea activa y avanza el tiempo', () => {
@@ -55,6 +65,7 @@ describe('PantallaEscritorio', () => {
 
     expect(screen.getByText('Hacer test')).toBeInTheDocument();
     expect(screen.getByText(/00:00 de 01:00/)).toBeInTheDocument();
+    expect(screen.getByTestId('barra-sistema')).toHaveAttribute('data-estadobuho', 'foco');
 
     act(() => {
       vi.advanceTimersByTime(1000);
@@ -63,9 +74,11 @@ describe('PantallaEscritorio', () => {
     expect(screen.getByText(/01:00 de 01:00/)).toBeInTheDocument();
   });
 
-  it('permite pausar y reanudar', () => {
+  it('permite pausar y reanudar cambiando el estado del búho', () => {
     useTareas.getState().empezar(tarea1);
     render(<PantallaEscritorio />);
+
+    expect(screen.getByTestId('barra-sistema')).toHaveAttribute('data-estadobuho', 'foco');
 
     const btnPausar = screen.getByRole('button', { name: 'Pausar' });
     act(() => {
@@ -73,6 +86,7 @@ describe('PantallaEscritorio', () => {
     });
 
     expect(screen.getByText(/En pausa/)).toBeInTheDocument();
+    expect(screen.getByTestId('barra-sistema')).toHaveAttribute('data-estadobuho', 'reposo');
 
     const btnReanudar = screen.getByRole('button', { name: 'Reanudar' });
     act(() => {
@@ -80,9 +94,10 @@ describe('PantallaEscritorio', () => {
     });
 
     expect(screen.getByText(/En curso/)).toBeInTheDocument();
+    expect(screen.getByTestId('barra-sistema')).toHaveAttribute('data-estadobuho', 'foco');
   });
 
-  it('terminar cierra la tarea', () => {
+  it('terminar lleva a la pantalla de logro con búho en logro', () => {
     useTareas.getState().empezar(tarea1);
     render(<PantallaEscritorio />);
 
@@ -91,7 +106,9 @@ describe('PantallaEscritorio', () => {
       fireEvent.click(btnTerminar);
     });
 
-    expect(screen.getByText(/Logro: pendiente/)).toBeInTheDocument();
+    expect(screen.getByText('Tarea completada')).toBeInTheDocument();
+    expect(screen.getByText('Hacer test')).toBeInTheDocument();
+    expect(screen.getByTestId('barra-sistema')).toHaveAttribute('data-estadobuho', 'logro');
   });
 
   it('abre una ventana desde el dock y pasa el título a la barra del sistema', () => {

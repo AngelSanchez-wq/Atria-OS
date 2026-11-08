@@ -5,6 +5,8 @@ import { useProcesos } from '../../store/procesos';
 import { useSesion } from '../../store/sesion';
 import { useEnergia } from '../../store/energia';
 import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
+import { estadoBuho } from '../../kernel/tasks/buho';
+import { PantallaLogro } from '../achievement/PantallaLogro';
 import { AppId } from '../../kernel/types';
 import { APPS } from '../../config/apps';
 import { BarraSistema } from '../systembar/BarraSistema';
@@ -29,9 +31,12 @@ export function PantallaEscritorio({
     estado,
     segundosTranscurridos,
     pendientes,
+    ultimaTerminada,
+    enLogro,
     pausar,
     reanudar,
     terminar,
+    continuarTrasLogro,
     avanzar,
   } = useTareas();
 
@@ -115,11 +120,55 @@ export function PantallaEscritorio({
     transicionar('suspendido');
   };
 
+  const estadoActualBuho = estadoBuho({
+    tieneTareaActiva: !!tareaActiva,
+    estadoTarea: estado,
+    enLogro,
+  });
+
+  // Pantalla de logro al terminar una tarea
+  if (enLogro && ultimaTerminada) {
+    // TODO: Cuando existan suspensión y bloqueo, no interrumpir la pantalla de logro
+    return (
+      <div className="flex h-full w-full flex-col bg-bg">
+        <BarraSistema
+          titulo={tituloBarra}
+          estadoBuho="logro"
+          onBloquear={manejarBloquear}
+          onSuspender={manejarSuspender}
+          onReiniciar={solicitarReiniciar}
+          onApagar={solicitarApagar}
+          onCambiarUsuario={onCambiarUsuario}
+          onCerrarSesion={onCerrarSesion}
+        />
+        <div className="relative flex flex-1 overflow-hidden">
+          <Dock
+            appActiva={ultimaTerminada.tarea.app}
+            appsAbiertas={appsAbiertas}
+            appEnfocada={appEnfocadaId}
+            onAbrirApp={manejarAbrirApp}
+          />
+          <main className="relative flex flex-1 flex-col overflow-y-auto">
+            <PantallaLogro
+              tareaTerminada={ultimaTerminada.tarea}
+              segundosTranscurridos={ultimaTerminada.segundosTranscurridos}
+              siguienteTarea={pendientes[0] ?? null}
+              onContinuar={continuarTrasLogro}
+            />
+            <ContenedorVentanas />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado vacío cuando no hay tareas activas
   if (!tareaActiva) {
     return (
       <div className="flex h-full w-full flex-col bg-bg">
         <BarraSistema
           titulo={tituloBarra}
+          estadoBuho={estadoActualBuho}
           onBloquear={manejarBloquear}
           onSuspender={manejarSuspender}
           onReiniciar={solicitarReiniciar}
@@ -129,7 +178,7 @@ export function PantallaEscritorio({
         />
         <main className="flex flex-1 items-center justify-center">
           <p className="text-xl text-muted">
-            Logro: pendiente (No tienes tareas pendientes)
+            No tienes tareas pendientes
           </p>
         </main>
       </div>
@@ -140,6 +189,7 @@ export function PantallaEscritorio({
     <div className="flex h-full w-full flex-col bg-bg">
       <BarraSistema
         titulo={tituloBarra}
+        estadoBuho={estadoActualBuho}
         onBloquear={manejarBloquear}
         onSuspender={manejarSuspender}
         onReiniciar={solicitarReiniciar}

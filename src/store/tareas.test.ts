@@ -12,6 +12,9 @@ describe('Store Tareas', () => {
       estado: 'en-curso',
       segundosTranscurridos: 0,
       pendientes: [],
+      ultimaTerminada: null,
+      enLogro: false,
+      iniciada: false,
     });
   });
 
@@ -52,10 +55,32 @@ describe('Store Tareas', () => {
     expect(useTareas.getState().segundosTranscurridos).toBe(0);
   });
 
-  it('terminar pasa a la siguiente tarea', () => {
+  it('terminar activa el estado de logro y guarda la última tarea terminada', () => {
+    useTareas.getState().empezar(tareaMock, [tareaSiguiente]);
+    useTareas.getState().avanzar(120);
+
+    useTareas.getState().terminar();
+
+    const estado = useTareas.getState();
+    expect(estado.enLogro).toBe(true);
+    expect(estado.tareaActiva).toBeNull();
+    expect(estado.ultimaTerminada).toEqual({
+      tarea: tareaMock,
+      segundosTranscurridos: 120,
+    });
+    expect(estado.pendientes).toEqual([tareaSiguiente]);
+  });
+
+  it('continuarTrasLogro desactiva el logro y activa la siguiente tarea', () => {
     useTareas.getState().empezar(tareaMock, [tareaSiguiente]);
     useTareas.getState().terminar();
-    expect(useTareas.getState().tareaActiva).toEqual(tareaSiguiente);
-    expect(useTareas.getState().pendientes).toEqual([]);
+    useTareas.getState().continuarTrasLogro();
+
+    const estado = useTareas.getState();
+    expect(estado.enLogro).toBe(false);
+    expect(estado.ultimaTerminada).toBeNull();
+    expect(estado.tareaActiva).toEqual(tareaSiguiente);
+    expect(estado.pendientes).toEqual([]);
+    expect(estado.segundosTranscurridos).toBe(0);
   });
 });

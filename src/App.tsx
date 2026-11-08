@@ -36,7 +36,7 @@ export default function App() {
   const guardarTareasUsuario = useSesion((s) => s.guardarTareasUsuario);
   const limpiarUsuario = useSesion((s) => s.limpiarUsuario);
 
-  const tareaActiva = useTareas((s) => s.tareaActiva);
+  const iniciada = useTareas((s) => s.iniciada);
   const empezarTarea = useTareas((s) => s.empezar);
 
   const procesos = useProcesos((s) => s.procesos);
@@ -67,13 +67,19 @@ export default function App() {
     // Restaurar tareas del usuario si ya tenía una activa
     const tareasPrevias = tareasPorUsuario[u.id];
     if (tareasPrevias) {
-      useTareas.setState(tareasPrevias);
+      useTareas.setState({
+        ...tareasPrevias,
+        iniciada: tareasPrevias.iniciada ?? true,
+      });
     } else {
       useTareas.setState({
         tareaActiva: null,
         pendientes: [],
         estado: 'en-curso',
         segundosTranscurridos: 0,
+        ultimaTerminada: null,
+        enLogro: false,
+        iniciada: false,
       });
     }
 
@@ -95,12 +101,16 @@ export default function App() {
         pendientes: stTareas.pendientes,
         estado: stTareas.estado,
         segundosTranscurridos: stTareas.segundosTranscurridos,
+        iniciada: stTareas.iniciada,
       });
       useTareas.setState({
         tareaActiva: null,
         pendientes: [],
         estado: 'en-curso',
         segundosTranscurridos: 0,
+        ultimaTerminada: null,
+        enLogro: false,
+        iniciada: false,
       });
     }
     salir();
@@ -125,6 +135,9 @@ export default function App() {
         pendientes: [],
         estado: 'en-curso',
         segundosTranscurridos: 0,
+        ultimaTerminada: null,
+        enLogro: false,
+        iniciada: false,
       });
     }
     salir();
@@ -184,6 +197,9 @@ export default function App() {
             pendientes: [],
             estado: 'en-curso',
             segundosTranscurridos: 0,
+            ultimaTerminada: null,
+            enLogro: false,
+            iniciada: false,
           });
           transicionar('apagado');
         }}
@@ -205,6 +221,9 @@ export default function App() {
             pendientes: [],
             estado: 'en-curso',
             segundosTranscurridos: 0,
+            ultimaTerminada: null,
+            enLogro: false,
+            iniciada: false,
           });
           transicionar('encendiendo');
         }}
@@ -226,7 +245,7 @@ export default function App() {
   // 8. Activo (Bienvenida o Escritorio)
   return (
     <>
-      {!tareaActiva ? (
+      {!iniciada ? (
         <PantallaBienvenida
           onEmpezar={(tarea) => {
             const pendientes = TAREAS_SEMILLA.filter((t) => t.id !== tarea.id);

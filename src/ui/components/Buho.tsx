@@ -13,9 +13,9 @@ const ARCHIVOS: Record<EstadoBuho, string> = {
 };
 
 const TEXTOS_ALT: Record<EstadoBuho, string> = {
-  reposo: 'Búho en reposo',
-  foco: 'Búho concentrado',
-  logro: 'Búho celebrando un logro',
+  reposo: 'Atria-OS, en reposo',
+  foco: 'Atria-OS, en foco',
+  logro: 'Tarea completada',
 };
 
 export function Buho({ estado, tamano }: BuhoProps) {

@@ -128,4 +128,15 @@ describe('BarraSistema', () => {
 
     expect(screen.getByText('10:43')).toBeInTheDocument();
   });
+
+  it('el búho recibe y muestra cada estado con su texto alternativo', () => {
+    const { rerender } = render(<BarraSistema estadoBuho="foco" />);
+    expect(screen.getByRole('img', { name: 'Atria-OS, en foco' })).toBeInTheDocument();
+
+    rerender(<BarraSistema estadoBuho="reposo" />);
+    expect(screen.getByRole('img', { name: 'Atria-OS, en reposo' })).toBeInTheDocument();
+
+    rerender(<BarraSistema estadoBuho="logro" />);
+    expect(screen.getByRole('img', { name: 'Tarea completada' })).toBeInTheDocument();
+  });
 });
