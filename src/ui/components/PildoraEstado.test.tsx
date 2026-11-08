@@ -15,4 +15,12 @@ describe('PildoraEstado', () => {
     const pildora = screen.getByText('Bloqueado');
     expect(pildora.className).toContain('bg-warm');
   });
+
+  it('renderiza la píldora de aviso con colores cálidos y texto por defecto', () => {
+    render(<PildoraEstado gravedad="aviso" />);
+    const pildora = screen.getByText('Aviso');
+    expect(pildora).toBeInTheDocument();
+    expect(pildora.className).toContain('bg-warm');
+    expect(pildora.className).toContain('text-warm-ink');
+  });
 });

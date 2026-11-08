@@ -25,6 +25,7 @@ import {
 } from './kernel/processes/usuario-aislamiento';
 import { TAREAS_SEMILLA } from './kernel/tasks/tareas-semilla';
 import { Usuario } from './kernel/types';
+import { registrar } from './system/logging/servicio';
 
 export default function App() {
   const usuario = useSesion((s) => s.usuario);
@@ -102,6 +103,13 @@ export default function App() {
 
   const manejarCambiarUsuario = () => {
     if (usuario) {
+      registrar({
+        categoria: 'sesion',
+        gravedad: 'info',
+        mensaje: `Cambio de usuario desde ${usuario.nombre}`,
+        usuarioId: usuario.id,
+      });
+
       const { procesosActualizados, estadosPrevios } = pausarProcesosDeUsuario(
         useProcesos.getState().procesos,
         usuario.id
@@ -138,6 +146,13 @@ export default function App() {
 
   const confirmarCerrarSesion = () => {
     if (usuario) {
+      registrar({
+        categoria: 'sesion',
+        gravedad: 'info',
+        mensaje: `Cierre de sesión de ${usuario.nombre}`,
+        usuarioId: usuario.id,
+      });
+
       const procesosLimpios = terminarProcesosDeUsuario(
         useProcesos.getState().procesos,
         usuario.id
@@ -286,7 +301,15 @@ export default function App() {
         mensaje="Se guardarán tus tareas y se cerrarán las apps abiertas."
         textoConfirmar="Apagar"
         textoCancelar="Cancelar"
-        onConfirmar={() => transicionar('apagando')}
+        onConfirmar={() => {
+          registrar({
+            categoria: 'energia',
+            gravedad: 'info',
+            mensaje: 'Apagado del sistema',
+            usuarioId: usuario?.id,
+          });
+          transicionar('apagando');
+        }}
         onCancelar={cancelarDialogo}
       />
 
@@ -296,7 +319,15 @@ export default function App() {
         mensaje="Se guardarán tus tareas y se cerrarán las apps abiertas."
         textoConfirmar="Reiniciar"
         textoCancelar="Cancelar"
-        onConfirmar={() => transicionar('reiniciando')}
+        onConfirmar={() => {
+          registrar({
+            categoria: 'energia',
+            gravedad: 'info',
+            mensaje: 'Reinicio del sistema',
+            usuarioId: usuario?.id,
+          });
+          transicionar('reiniciando');
+        }}
         onCancelar={cancelarDialogo}
       />
 

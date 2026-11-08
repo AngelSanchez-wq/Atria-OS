@@ -12,6 +12,7 @@ import { TarjetaTarea } from '../components/TarjetaTarea';
 import { Boton } from '../components/Boton';
 import { BotonEnlace } from '../components/BotonEnlace';
 import { Tarea } from '../../kernel/types';
+import { registrar } from '../../system/logging/servicio';
 
 type PantallaBienvenidaProps = {
   onEmpezar: (tarea: Tarea) => void;
@@ -45,10 +46,22 @@ export function PantallaBienvenida({
   };
 
   const manejarBloquear = () => {
+    registrar({
+      categoria: 'energia',
+      gravedad: 'info',
+      mensaje: 'Sistema bloqueado',
+      usuarioId: usuario?.id,
+    });
     transicionar('bloqueado');
   };
 
   const manejarSuspender = () => {
+    registrar({
+      categoria: 'energia',
+      gravedad: 'info',
+      mensaje: 'Sistema suspendido',
+      usuarioId: usuario?.id,
+    });
     const { procesosPausados, estadosPrevios } = pausarProcesosPorSuspension(procesos);
     guardarEstadosPrevios(estadosPrevios);
     useProcesos.setState({ procesos: procesosPausados });
