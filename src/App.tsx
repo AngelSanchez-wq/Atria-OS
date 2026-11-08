@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PantallaEncendido } from './ui/boot/PantallaEncendido';
 import { PantallaLogin } from './ui/login/PantallaLogin';
 import { PantallaBienvenida } from './ui/welcome/PantallaBienvenida';
@@ -12,6 +12,8 @@ import { useTareas } from './store/tareas';
 import { useVentanas } from './store/ventanas';
 import { useProcesos } from './store/procesos';
 import { useEnergia } from './store/energia';
+import { useNotificaciones } from './store/notificaciones';
+import { iniciarSimuladorNotificaciones } from './system/notifications/simulador';
 import {
   restaurarProcesosDeSuspension,
   limpiarProcesosPorReinicioOApagado,
@@ -50,6 +52,18 @@ export default function App() {
     transicionar,
     cancelarDialogo,
   } = useEnergia();
+
+  const sesionActiva = estado === 'activo' && !!usuario;
+
+  useEffect(() => {
+    if (!sesionActiva) return;
+
+    // TODO: Pausar o suspender el simulador durante suspensión y bloqueo cuando existan
+    const detenerSimulador = iniciarSimuladorNotificaciones();
+    return () => {
+      detenerSimulador();
+    };
+  }, [sesionActiva]);
 
   const manejarIngresar = (u: Usuario) => {
     ingresar(u);
@@ -112,6 +126,7 @@ export default function App() {
         enLogro: false,
         iniciada: false,
       });
+      useNotificaciones.getState().reiniciar();
     }
     salir();
     transicionar('login');
@@ -139,6 +154,7 @@ export default function App() {
         enLogro: false,
         iniciada: false,
       });
+      useNotificaciones.getState().reiniciar();
     }
     salir();
     setDialogoCerrarSesion(false);
@@ -201,6 +217,7 @@ export default function App() {
             enLogro: false,
             iniciada: false,
           });
+          useNotificaciones.getState().reiniciar();
           transicionar('apagado');
         }}
       />
@@ -225,6 +242,7 @@ export default function App() {
             enLogro: false,
             iniciada: false,
           });
+          useNotificaciones.getState().reiniciar();
           transicionar('encendiendo');
         }}
       />

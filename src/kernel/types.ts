@@ -48,3 +48,22 @@ export type PCB = {
   tipoApp: TipoApp;
   url?: string;
 };
+
+export type TipoNotificacion = 'sistema' | 'mensajes' | 'recordatorios' | 'alertas';
+
+export type EstadoNotificacion = 'retenida' | 'entregada' | 'leida';
+
+export type NivelUrgencia = 'urgente' | 'normal' | 'baja';
+
+export type DecisionEntrega = 'inmediata' | 'retener';
+
+export type Notificacion = {
+  id: string;
+  tipo: TipoNotificacion;
+  /** Escala de 1 (baja) a 5 (urgente). */
+  urgencia: number;
+  titulo: string;
+  /** Timestamp epoch en ms. Sin Date: kernel puro. */
+  creadaEn: number;
+  estado: EstadoNotificacion;
+};

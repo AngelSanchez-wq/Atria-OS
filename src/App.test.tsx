@@ -5,6 +5,7 @@ import { useVentanas } from './store/ventanas';
 import { useProcesos } from './store/procesos';
 import { useTareas } from './store/tareas';
 import { useEnergia } from './store/energia';
+import { useNotificaciones } from './store/notificaciones';
 import { USUARIOS_SEMILLA } from './kernel/users/usuarios-semilla';
 import { PROCESO_KERNEL_BASE } from './kernel/processes/constantes';
 
@@ -19,6 +20,7 @@ vi.mock('framer-motion', async (importOriginal) => {
 describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    useNotificaciones.getState().reiniciar();
     useSesion.setState({
       usuario: null,
       estadosProcesosPorUsuario: {},
