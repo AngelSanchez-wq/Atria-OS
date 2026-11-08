@@ -14,7 +14,8 @@ export type AppId =
   | 'tagfs'
   | 'burble'
   | 'ambient'
-  | 'monitor';
+  | 'monitor'
+  | 'configuracion';
 
 export type Tarea = {
   id: string;

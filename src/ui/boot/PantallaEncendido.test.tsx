@@ -2,13 +2,9 @@ import { act, render, screen } from '@testing-library/react';
 import { NOMBRE_SISTEMA } from '../../config/sistema';
 import { PantallaEncendido } from './PantallaEncendido';
 
-vi.mock('framer-motion', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('framer-motion')>();
-  return {
-    ...actual,
-    useReducedMotion: () => true,
-  };
-});
+vi.mock('../../hooks/useMovimientoReducido', () => ({
+  useMovimientoReducido: () => true,
+}));
 
 describe('PantallaEncendido', () => {
   beforeEach(() => {

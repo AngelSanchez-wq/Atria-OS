@@ -10,6 +10,19 @@ body,
   height: 100%;
 }
 
+/* Escalas tipográficas de la raíz (rem) */
+html[data-text-size='normal'] {
+  font-size: 100%;
+}
+
+html[data-text-size='grande'] {
+  font-size: 112.5%;
+}
+
+html[data-text-size='muy-grande'] {
+  font-size: 125%;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -17,6 +30,7 @@ body {
   font-family: Nunito, system-ui, sans-serif;
 }
 
+/* Reducción global del movimiento por preferencia del sistema operativo */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -24,4 +38,12 @@ body {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Reducción global del movimiento por preferencia del usuario en Atria-OS */
+[data-reduced-motion='true'] *,
+[data-reduced-motion='true'] *::before,
+[data-reduced-motion='true'] *::after {
+  animation: none !important;
+  transition: none !important;
 }

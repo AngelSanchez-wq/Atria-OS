@@ -55,4 +55,28 @@ describe('MenuUsuario', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCerrar).toHaveBeenCalledOnce();
   });
+
+  it('muestra la opción Configuración y llama a onAbrirConfiguracion', () => {
+    const onCerrar = vi.fn();
+    const onAbrirConfiguracion = vi.fn();
+
+    render(
+      <MenuUsuario
+        abierto={true}
+        onCerrar={onCerrar}
+        onCambiarUsuario={vi.fn()}
+        onCerrarSesion={vi.fn()}
+        onAbrirConfiguracion={onAbrirConfiguracion}
+      />
+    );
+
+    const botonConfiguracion = screen.getByRole('menuitem', {
+      name: 'Configuración',
+    });
+    expect(botonConfiguracion).toBeInTheDocument();
+
+    fireEvent.click(botonConfiguracion);
+    expect(onAbrirConfiguracion).toHaveBeenCalledOnce();
+    expect(onCerrar).toHaveBeenCalled();
+  });
 });

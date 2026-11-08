@@ -5,6 +5,7 @@ import { useProcesos } from '../../store/procesos';
 import { useSesion } from '../../store/sesion';
 import { useEnergia } from '../../store/energia';
 import { useNotificaciones, seleccionarSinLeer } from '../../store/notificaciones';
+import { useVolumenStore } from '../../store/volumen';
 import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
 import { estadoBuho } from '../../kernel/tasks/buho';
 import { PantallaLogro } from '../achievement/PantallaLogro';
@@ -55,6 +56,11 @@ export function PantallaEscritorio({
   const notificacionesSinLeer = useNotificaciones(seleccionarSinLeer);
   const avisoUrgente = useNotificaciones((s) => s.avisoUrgente);
   const descartarAvisoUrgente = useNotificaciones((s) => s.descartarAvisoUrgente);
+
+  const volumen = useVolumenStore((s) => s.volumen);
+  const silenciado = useVolumenStore((s) => s.silenciado);
+  const setVolumen = useVolumenStore((s) => s.setVolumen);
+  const alternarSilencio = useVolumenStore((s) => s.alternarSilencio);
 
   const [avisoMemoria, setAvisoMemoria] = useState<string | null>(null);
 
@@ -142,12 +148,17 @@ export function PantallaEscritorio({
           notificaciones={notificacionesSinLeer}
           onNotificaciones={() => manejarAbrirApp('burble')}
           estadoBuho="logro"
+          volumen={volumen}
+          silenciado={silenciado}
+          onCambiarVolumen={setVolumen}
+          onAlternarSilencio={alternarSilencio}
           onBloquear={manejarBloquear}
           onSuspender={manejarSuspender}
           onReiniciar={solicitarReiniciar}
           onApagar={solicitarApagar}
           onCambiarUsuario={onCambiarUsuario}
           onCerrarSesion={onCerrarSesion}
+          onConfiguracion={() => manejarAbrirApp('configuracion')}
         />
         <AvisoUrgente
           aviso={avisoUrgente}
@@ -183,12 +194,17 @@ export function PantallaEscritorio({
           notificaciones={notificacionesSinLeer}
           onNotificaciones={() => manejarAbrirApp('burble')}
           estadoBuho={estadoActualBuho}
+          volumen={volumen}
+          silenciado={silenciado}
+          onCambiarVolumen={setVolumen}
+          onAlternarSilencio={alternarSilencio}
           onBloquear={manejarBloquear}
           onSuspender={manejarSuspender}
           onReiniciar={solicitarReiniciar}
           onApagar={solicitarApagar}
           onCambiarUsuario={onCambiarUsuario}
           onCerrarSesion={onCerrarSesion}
+          onConfiguracion={() => manejarAbrirApp('configuracion')}
         />
         <AvisoUrgente
           aviso={avisoUrgente}
@@ -210,12 +226,17 @@ export function PantallaEscritorio({
         notificaciones={notificacionesSinLeer}
         onNotificaciones={() => manejarAbrirApp('burble')}
         estadoBuho={estadoActualBuho}
+        volumen={volumen}
+        silenciado={silenciado}
+        onCambiarVolumen={setVolumen}
+        onAlternarSilencio={alternarSilencio}
         onBloquear={manejarBloquear}
         onSuspender={manejarSuspender}
         onReiniciar={solicitarReiniciar}
         onApagar={solicitarApagar}
         onCambiarUsuario={onCambiarUsuario}
         onCerrarSesion={onCerrarSesion}
+        onConfiguracion={() => manejarAbrirApp('configuracion')}
       />
       <AvisoUrgente
         aviso={avisoUrgente}

@@ -11,7 +11,9 @@ type DockProps = {
 };
 
 const TODAS_APPS = Object.keys(APPS) as AppId[];
-const APPS_ESTANDAR = TODAS_APPS.filter((id) => !APPS[id].soloAdmin);
+const APPS_ESTANDAR = TODAS_APPS.filter(
+  (id) => !APPS[id].soloAdmin && !APPS[id].ocultaEnDock
+);
 const APPS_ADMIN = TODAS_APPS.filter((id) => APPS[id].soloAdmin);
 
 export function Dock({
@@ -62,6 +64,10 @@ export function Dock({
     );
   };
 
+  const appsOcultasAbiertas = TODAS_APPS.filter(
+    (id) => APPS[id].ocultaEnDock && appsAbiertas.includes(id)
+  );
+
   return (
     <nav
       aria-label="Aplicaciones"
@@ -69,6 +75,7 @@ export function Dock({
     >
       <div className="flex flex-col items-center gap-6">
         {APPS_ESTANDAR.map(renderBotonApp)}
+        {appsOcultasAbiertas.map(renderBotonApp)}
       </div>
 
       {esAdmin && APPS_ADMIN.length > 0 && (

@@ -28,4 +28,5 @@ export const CONFIG_PROCESO: Record<AppId, { prioridad: number; memoriaMb: numbe
   burble:    { prioridad: 3, memoriaMb: 64  }, // App propia (en construcción)
   ambient:   { prioridad: 1, memoriaMb: 48  }, // Sonidos de fondo
   monitor:   { prioridad: 6, memoriaMb: 60  }, // Monitor de procesos
+  configuracion: { prioridad: 5, memoriaMb: 64 }, // Ajustes del sistema
 };

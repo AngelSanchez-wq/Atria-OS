@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { servicioAudio } from './servicio';
 import { useAudioStore } from '../../store/audio';
+import { useVolumenStore } from '../../store/volumen';
 import { platform } from '../../platform/web';
 import { AudioPlayer } from '../../platform/types';
 
@@ -15,6 +16,11 @@ describe('ServicioAudio', () => {
       volumen: 0.5,
       silenciado: false,
       aviso: null,
+    });
+
+    useVolumenStore.setState({
+      volumen: 0.7,
+      silenciado: false,
     });
 
     mockPlay.mockReset().mockResolvedValue(undefined);
@@ -58,8 +64,36 @@ describe('ServicioAudio', () => {
     expect(useAudioStore.getState().volumen).toBe(0);
   });
 
+  it('aplica el volumen efectivo (propio × maestro) al reproductor', () => {
+    // Propio 0.6 × Maestro 0.7 = 0.42
+    useAudioStore.getState().setVolumen(0.6);
+    useVolumenStore.getState().setVolumen(0.7);
+    servicioAudio.actualizarVolumenEfectivo();
+
+    expect(mockSetVolume).toHaveBeenCalledWith(0.42);
+    expect(servicioAudio.obtenerVolumenEfectivo()).toBe(0.42);
+  });
+
+  it('aplica volumen 0 al silenciar el volumen maestro del sistema', () => {
+    useAudioStore.getState().setVolumen(0.8);
+    useVolumenStore.getState().setVolumen(0.9);
+
+    // Al silenciar en el store maestro
+    useVolumenStore.getState().setSilenciado(true);
+    servicioAudio.actualizarVolumenEfectivo();
+
+    expect(mockSetVolume).toHaveBeenCalledWith(0);
+    expect(servicioAudio.obtenerVolumenEfectivo()).toBe(0);
+
+    // Al restaurar el sonido
+    useVolumenStore.getState().setSilenciado(false);
+    servicioAudio.actualizarVolumenEfectivo();
+
+    expect(mockSetVolume).toHaveBeenCalledWith(0.72);
+    expect(servicioAudio.obtenerVolumenEfectivo()).toBe(0.72);
+  });
+
   it('maneja el bloqueo del navegador mostrando aviso tranquilo', async () => {
-    // Forzar fallo de reproducción en el player
     const playerError: AudioPlayer = {
       play: vi.fn<(src: string, loop?: boolean) => Promise<void>>().mockRejectedValue(new Error('Autoplay blocked')),
       stop: vi.fn(),

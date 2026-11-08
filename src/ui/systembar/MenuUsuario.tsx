@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Users, LogOut } from 'lucide-react';
+import { Users, LogOut, SlidersHorizontal } from 'lucide-react';
 import { useSesion } from '../../store/sesion';
 import { SelectorTema } from '../components/SelectorTema';
 
@@ -8,6 +8,7 @@ type MenuUsuarioProps = {
   onCerrar: () => void;
   onCambiarUsuario: () => void;
   onCerrarSesion: () => void;
+  onAbrirConfiguracion?: () => void;
 };
 
 export function MenuUsuario({
@@ -15,6 +16,7 @@ export function MenuUsuario({
   onCerrar,
   onCambiarUsuario,
   onCerrarSesion,
+  onAbrirConfiguracion,
 }: MenuUsuarioProps) {
   const usuario = useSesion((s) => s.usuario);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,19 @@ export function MenuUsuario({
         >
           <Users size={16} className="text-muted" aria-hidden="true" />
           <span>Cambiar de usuario</span>
+        </button>
+
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            onCerrar();
+            onAbrirConfiguracion?.();
+          }}
+          className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-ink outline-none transition-colors hover:bg-soft focus-visible:bg-soft focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <SlidersHorizontal size={16} className="text-muted" aria-hidden="true" />
+          <span>Configuración</span>
         </button>
 
         <button

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Bell, Power, Volume2, Wifi } from 'lucide-react';
+import { Bell, Power, Volume2, Volume1, VolumeX, Wifi } from 'lucide-react';
 import {
   ALTURA_BARRA_CLASE,
   CLASE_CIRCULO_BUHO,
@@ -14,14 +14,19 @@ import { BotonIcono } from './BotonIcono';
 import { IndicadorBateria } from './IndicadorBateria';
 import { MenuEncendido } from './MenuEncendido';
 import { MenuUsuario } from './MenuUsuario';
+import { PanelVolumen } from './PanelVolumen';
 
 type BarraSistemaProps = {
   titulo?: string;
   notificaciones?: number;
   estadoBuho?: 'reposo' | 'foco' | 'logro';
+  volumen?: number;
+  silenciado?: boolean;
   onVolver?: () => void;
   onWifi?: () => void;
   onVolumen?: () => void;
+  onCambiarVolumen?: (volumen: number) => void;
+  onAlternarSilencio?: () => void;
   onBateria?: () => void;
   onNotificaciones?: () => void;
   onUsuario?: () => void;
@@ -32,15 +37,20 @@ type BarraSistemaProps = {
   onApagar?: () => void;
   onCambiarUsuario?: () => void;
   onCerrarSesion?: () => void;
+  onConfiguracion?: () => void;
 };
 
 export function BarraSistema({
   titulo,
   notificaciones = 0,
   estadoBuho = 'foco',
+  volumen,
+  silenciado,
   onVolver,
   onWifi,
   onVolumen,
+  onCambiarVolumen,
+  onAlternarSilencio,
   onBateria,
   onNotificaciones,
   onUsuario,
@@ -51,6 +61,7 @@ export function BarraSistema({
   onApagar,
   onCambiarUsuario,
   onCerrarSesion,
+  onConfiguracion,
 }: BarraSistemaProps) {
   const { hora, fecha, ahora } = useHora();
   const estado = obtenerEstadoSistema();
@@ -60,12 +71,15 @@ export function BarraSistema({
 
   const [menuEncendidoAbierto, setMenuEncendidoAbierto] = useState(false);
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
+  const [panelVolumenAbierto, setPanelVolumenAbierto] = useState(false);
 
   const botonPowerRef = useRef<HTMLButtonElement>(null);
   const botonUsuarioRef = useRef<HTMLButtonElement>(null);
+  const botonVolumenRef = useRef<HTMLButtonElement>(null);
 
   const alternarMenuEncendido = () => {
     setMenuUsuarioAbierto(false);
+    setPanelVolumenAbierto(false);
     if (onEncendido) {
       onEncendido();
     }
@@ -79,6 +93,7 @@ export function BarraSistema({
 
   const alternarMenuUsuario = () => {
     setMenuEncendidoAbierto(false);
+    setPanelVolumenAbierto(false);
     if (onUsuario) {
       onUsuario();
     }
@@ -89,6 +104,32 @@ export function BarraSistema({
     setMenuUsuarioAbierto(false);
     botonUsuarioRef.current?.focus();
   };
+
+  const alternarPanelVolumen = () => {
+    setMenuEncendidoAbierto(false);
+    setMenuUsuarioAbierto(false);
+    if (onVolumen) {
+      onVolumen();
+    }
+    setPanelVolumenAbierto((prev) => !prev);
+  };
+
+  const cerrarPanelVolumen = () => {
+    setPanelVolumenAbierto(false);
+    botonVolumenRef.current?.focus();
+  };
+
+  const IconoVolumen = silenciado
+    ? VolumeX
+    : (volumen ?? 0.7) <= 0.5
+    ? Volume1
+    : Volume2;
+
+  const etiquetaVolumen = silenciado
+    ? 'Silenciado'
+    : volumen !== undefined
+    ? `Volumen ${Math.round(volumen * 100)} %`
+    : 'Volumen';
 
   return (
     <header
@@ -136,11 +177,12 @@ export function BarraSistema({
         </BotonIcono>
 
         <BotonIcono
-          etiqueta="Volumen"
-          onClick={onVolumen}
-          className="text-muted"
+          ref={botonVolumenRef}
+          etiqueta={etiquetaVolumen}
+          onClick={alternarPanelVolumen}
+          className={panelVolumenAbierto ? 'text-accent' : 'text-muted'}
         >
-          <Volume2 size={TAMANO_ICONO_BARRA} aria-hidden="true" />
+          <IconoVolumen size={TAMANO_ICONO_BARRA} aria-hidden="true" />
         </BotonIcono>
 
         <IndicadorBateria
@@ -217,6 +259,19 @@ export function BarraSistema({
           cerrarMenuUsuario();
           onCerrarSesion?.();
         }}
+        onAbrirConfiguracion={() => {
+          cerrarMenuUsuario();
+          onConfiguracion?.();
+        }}
+      />
+
+      <PanelVolumen
+        abierto={panelVolumenAbierto}
+        volumen={volumen ?? 0.7}
+        silenciado={silenciado ?? false}
+        onCerrar={cerrarPanelVolumen}
+        onCambiarVolumen={onCambiarVolumen ?? (() => {})}
+        onAlternarSilencio={onAlternarSilencio ?? (() => {})}
       />
     </header>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { animate, useReducedMotion } from 'framer-motion';
+import { animate } from 'framer-motion';
+import { useMovimientoReducido } from '../../hooks/useMovimientoReducido';
 import { NOMBRE_SISTEMA } from '../../config/sistema';
 import { Buho } from '../components/Buho';
 import { BarraProgreso } from '../components/BarraProgreso';
@@ -12,7 +13,7 @@ const DURACION_SEGUNDOS = 3;
 const PAUSA_SIN_MOVIMIENTO_MS = 400;
 
 export function PantallaEncendido({ onTerminar }: PantallaEncendidoProps) {
-  const reducirMovimiento = useReducedMotion();
+  const reducirMovimiento = useMovimientoReducido();
   const [progreso, setProgreso] = useState(0);
   const valor = reducirMovimiento ? 100 : progreso;
 

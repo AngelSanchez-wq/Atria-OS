@@ -10,12 +10,23 @@ vi.mock('../systembar/BarraSistema', () => ({
   BarraSistema: ({
     titulo,
     estadoBuho,
+    onConfiguracion,
   }: {
     titulo?: string;
     estadoBuho?: string;
+    onConfiguracion?: () => void;
   }) => (
     <div data-testid="barra-sistema" data-estadobuho={estadoBuho}>
       {titulo && <span data-testid="titulo-barra">{titulo}</span>}
+      {onConfiguracion && (
+        <button
+          type="button"
+          data-testid="btn-abrir-configuracion"
+          onClick={onConfiguracion}
+        >
+          Configuración
+        </button>
+      )}
     </div>
   ),
 }));
@@ -141,5 +152,31 @@ describe('PantallaEscritorio', () => {
       fireEvent.click(btnDock);
     });
     expect(screen.getAllByRole('dialog', { name: 'TimeLapse' })).toHaveLength(1);
+  });
+
+  it('abre la app Configuración desde la barra y no duplica ventanas al pulsar de nuevo', () => {
+    useTareas.getState().empezar(tarea1);
+    render(<PantallaEscritorio />);
+
+    const btnConfig = screen.getByTestId('btn-abrir-configuracion');
+
+    // Primera pulsación: abre la ventana de configuración
+    act(() => {
+      fireEvent.click(btnConfig);
+    });
+
+    const ventanas1 = useVentanas.getState().ventanas;
+    expect(ventanas1).toHaveLength(1);
+    expect(ventanas1[0].appId).toBe('configuracion');
+    expect(screen.getByRole('region', { name: 'Configuración del sistema' })).toBeInTheDocument();
+
+    // Segunda pulsación: enfoca la ventana existente sin crear una nueva
+    act(() => {
+      fireEvent.click(btnConfig);
+    });
+
+    const ventanas2 = useVentanas.getState().ventanas;
+    expect(ventanas2).toHaveLength(1);
+    expect(screen.getAllByRole('region', { name: 'Configuración del sistema' })).toHaveLength(1);
   });
 });

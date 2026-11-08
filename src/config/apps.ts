@@ -15,6 +15,8 @@ export type InfoApp = {
   fallback?: FallbackApp;
   /** Si true, la app solo es visible y accesible para administradores. */
   soloAdmin?: boolean;
+  /** Si true, la app no se lista fijamente en el dock cuando está cerrada. */
+  ocultaEnDock?: boolean;
 };
 
 // ─── URLs como constantes con nombre ────────────────────────────────────────
@@ -67,5 +69,11 @@ export const APPS: Record<AppId, InfoApp> = {
     rutaLogo: 'icons/monitor.svg',
     modo: 'interna',
     soloAdmin: true,
+  },
+  configuracion: {
+    nombre: 'Configuración',
+    rutaLogo: 'icons/configuracion.svg',
+    modo: 'interna',
+    ocultaEnDock: true,
   },
 };
