@@ -202,6 +202,7 @@ export function PantallaLogin({
             esAdmin={usuario.rol === 'admin'}
             bloqueado={usuario.estado === 'bloqueado'}
             foto={usuario.foto}
+            tamanoPx={96}
             tabIndex={usuario.id === usuarioActivo.id ? 0 : -1}
             onSeleccionar={() => seleccionarUsuario(usuario)}
           />

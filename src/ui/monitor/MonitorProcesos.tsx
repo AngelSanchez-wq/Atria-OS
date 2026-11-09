@@ -431,10 +431,18 @@ export function MonitorProcesos() {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-3">
                             <span
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-soft text-sm font-bold text-accent-strong shrink-0"
+                              className="flex h-10 w-10 items-center justify-center rounded-full bg-soft text-sm font-bold text-accent-strong shrink-0 overflow-hidden"
                               aria-hidden="true"
                             >
-                              {u.inicial}
+                              {u.foto ? (
+                                <img
+                                  src={u.foto}
+                                  alt=""
+                                  className="h-full w-full object-cover rounded-full"
+                                />
+                              ) : (
+                                u.inicial
+                              )}
                             </span>
                             <div className="flex items-center gap-1.5 font-semibold text-ink">
                               <span>{u.nombre}</span>

@@ -188,4 +188,26 @@ describe('BarraSistema', () => {
     rerender(<BarraSistema estadoBuho="logro" />);
     expect(screen.getByRole('img', { name: 'Tarea completada' })).toBeInTheDocument();
   });
+
+  it('muestra la foto de perfil en el botón de usuario y en el menú si existe', () => {
+    const usuarioConFoto: Usuario = {
+      ...usuarioMia,
+      foto: 'data:image/png;base64,foto_mia_barra',
+    };
+    useSesion.setState({ usuario: usuarioConFoto });
+
+    render(<BarraSistema />);
+
+    const botonUsuario = screen.getByRole('button', { name: 'Mia' });
+    const imgUsuario = botonUsuario.querySelector('img');
+    expect(imgUsuario).not.toBeNull();
+    expect(imgUsuario).toHaveAttribute('src', 'data:image/png;base64,foto_mia_barra');
+
+    // Al abrir el menú de usuario, la cabecera también muestra la foto
+    fireEvent.click(botonUsuario);
+    const menu = screen.getByRole('menu', { name: 'Menú de usuario' });
+    const imgMenu = menu.querySelector('img');
+    expect(imgMenu).not.toBeNull();
+    expect(imgMenu).toHaveAttribute('src', 'data:image/png;base64,foto_mia_barra');
+  });
 });

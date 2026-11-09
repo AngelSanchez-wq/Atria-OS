@@ -1,13 +1,22 @@
-import { useState } from 'react';
-import { Palette, Type, Accessibility, Info } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Palette, Type, Accessibility, Info, User, Camera, Trash2 } from 'lucide-react';
 import { SelectorTema } from '../../ui/components/SelectorTema';
 import { SelectorSegmentado, OpcionSegmentada } from '../../ui/components/SelectorSegmentado';
 import { Interruptor } from '../../ui/components/Interruptor';
+import { Boton } from '../../ui/components/Boton';
+import { Avatar } from '../../ui/components/Avatar';
+import { Dialogo } from '../../ui/components/Dialogo';
+import { DialogoAjustarFoto } from './DialogoAjustarFoto';
 import { usePreferenciasStore } from '../../store/preferencias';
 import { PreferenciaTamanoTexto } from '../../config/preferencias';
 import { useTema } from '../../store/tema';
+import { useSesion } from '../../store/sesion';
+import { useUsuariosStore } from '../../store/usuarios';
+import { validarArchivoFoto } from '../../kernel/users/foto';
+import { platform } from '../../platform/web';
+import { VistaPreviaFoto } from '../../platform/types';
 
-type SeccionConfiguracion = 'apariencia' | 'texto' | 'accesibilidad';
+type SeccionConfiguracion = 'perfil' | 'apariencia' | 'texto' | 'accesibilidad';
 
 const OPCIONES_TEXTO: OpcionSegmentada<PreferenciaTamanoTexto>[] = [
   { id: 'normal', etiqueta: 'Normal' },
@@ -16,7 +25,17 @@ const OPCIONES_TEXTO: OpcionSegmentada<PreferenciaTamanoTexto>[] = [
 ];
 
 export function Configuracion() {
-  const [seccionActiva, setSeccionActiva] = useState<SeccionConfiguracion>('apariencia');
+  const [seccionActiva, setSeccionActiva] = useState<SeccionConfiguracion>('perfil');
+  const usuario = useSesion((s) => s.usuario);
+  const cambiarFotoStore = useUsuariosStore((s) => s.cambiarFoto);
+  const quitarFotoStore = useUsuariosStore((s) => s.quitarFoto);
+
+  const inputArchivoRef = useRef<HTMLInputElement>(null);
+  const [errorArchivo, setErrorArchivo] = useState<string | null>(null);
+  const [archivoSeleccionado, setArchivoSeleccionado] = useState<File | null>(null);
+  const [vistaPreviaActual, setVistaPreviaActual] = useState<VistaPreviaFoto | null>(null);
+  const [dialogoAjustarAbierto, setDialogoAjustarAbierto] = useState(false);
+  const [dialogoConfirmarQuitar, setDialogoConfirmarQuitar] = useState(false);
 
   const {
     movimiento,
@@ -28,6 +47,62 @@ export function Configuracion() {
   } = usePreferenciasStore();
 
   const { temaEfectivo } = useTema();
+
+  const manejarArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorArchivo(null);
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+
+    // Resetear valor para permitir seleccionar el mismo archivo si se desea reintentar
+    e.target.value = '';
+
+    const validacion = validarArchivoFoto({
+      tipo: archivo.type,
+      tamano: archivo.size,
+    });
+
+    if (!validacion.ok) {
+      if (validacion.motivo === 'formato-no-permitido') {
+        setErrorArchivo('Ese formato no está permitido. Usa PNG, JPG o WebP.');
+      } else {
+        setErrorArchivo('La imagen es muy grande. Elige una de hasta 5 MB.');
+      }
+      return;
+    }
+
+    try {
+      const vistaPrevia = await platform.obtenerVistaPreviaFoto(archivo);
+      setArchivoSeleccionado(archivo);
+      setVistaPreviaActual(vistaPrevia);
+      setDialogoAjustarAbierto(true);
+    } catch {
+      setErrorArchivo('No se pudo abrir la imagen. Intenta con otra.');
+    }
+  };
+
+  const manejarGuardarFoto = async (dataUrl: string) => {
+    if (!usuario) return;
+    const res = cambiarFotoStore(usuario, usuario.id, dataUrl);
+    if (!res.ok) {
+      throw new Error(res.motivo);
+    }
+    setDialogoAjustarAbierto(false);
+    setArchivoSeleccionado(null);
+    setVistaPreviaActual(null);
+  };
+
+  const manejarCerrarDialogoAjustar = () => {
+    setDialogoAjustarAbierto(false);
+    setArchivoSeleccionado(null);
+    setVistaPreviaActual(null);
+  };
+
+  const manejarConfirmarQuitar = () => {
+    if (usuario) {
+      quitarFotoStore(usuario, usuario.id);
+    }
+    setDialogoConfirmarQuitar(false);
+  };
 
   return (
     <div
@@ -43,6 +118,23 @@ export function Configuracion() {
           aria-orientation="vertical"
           className="flex flex-col gap-1.5"
         >
+          <button
+            type="button"
+            role="tab"
+            id="tab-perfil"
+            aria-selected={seccionActiva === 'perfil'}
+            aria-controls="panel-perfil"
+            onClick={() => setSeccionActiva('perfil')}
+            className={`flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              seccionActiva === 'perfil'
+                ? 'bg-soft text-accent font-bold shadow-2xs'
+                : 'text-muted hover:text-ink hover:bg-soft/40 font-semibold'
+            }`}
+          >
+            <User size={18} aria-hidden="true" />
+            <span>Mi perfil</span>
+          </button>
+
           <button
             type="button"
             role="tab"
@@ -99,6 +191,87 @@ export function Configuracion() {
       {/* Contenido principal */}
       <main className="flex-1 flex flex-col justify-between overflow-y-auto p-8">
         <div className="flex-1">
+          {/* ─── Sección Mi perfil ───────────────────────────────────────── */}
+          {seccionActiva === 'perfil' && usuario && (
+            <div
+              id="panel-perfil"
+              role="tabpanel"
+              aria-labelledby="tab-perfil"
+              className="flex flex-col gap-6 max-w-xl"
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="font-fredoka text-2xl font-semibold text-ink">
+                  Mi perfil
+                </h2>
+                <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
+              </div>
+
+              <div className="flex items-center gap-6 pt-2">
+                <Avatar
+                  nombre={usuario.nombre}
+                  inicial={usuario.inicial}
+                  esAdmin={usuario.rol === 'admin'}
+                  foto={usuario.foto}
+                  tamanoPx={120}
+                  mostrarNombre={false}
+                />
+
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <h3 className="font-fredoka text-2xl font-semibold text-ink">
+                      {usuario.nombre}
+                    </h3>
+                    <p className="text-sm font-medium text-muted">
+                      {usuario.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={inputArchivoRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={manejarArchivoSeleccionado}
+                      className="sr-only"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    />
+
+                    <Boton
+                      variante="principal"
+                      onClick={() => inputArchivoRef.current?.click()}
+                      className="flex items-center gap-2"
+                    >
+                      <Camera size={16} aria-hidden="true" />
+                      <span>Cambiar foto</span>
+                    </Boton>
+
+                    {usuario.foto && (
+                      <Boton
+                        variante="secundario"
+                        onClick={() => setDialogoConfirmarQuitar(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Trash2 size={16} aria-hidden="true" />
+                        <span>Quitar foto</span>
+                      </Boton>
+                    )}
+                  </div>
+
+                  {errorArchivo && (
+                    <p role="alert" className="text-xs text-warm-ink font-medium">
+                      {errorArchivo}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-muted max-w-md pt-4">
+                La foto se guarda solo en este equipo. Formatos: PNG, JPG o WebP, hasta 5 MB.
+              </p>
+            </div>
+          )}
+
           {/* ─── Sección Apariencia ────────────────────────────────────────── */}
           {seccionActiva === 'apariencia' && (
             <div
@@ -200,32 +373,24 @@ export function Configuracion() {
                 />
               </div>
 
-              <p className="flex items-center gap-2 text-xs text-muted mt-1">
-                <Info size={14} className="text-accent shrink-0" aria-hidden="true" />
-                <span>Ajusta la escala tipográfica de todo el sistema.</span>
+              <p className="text-xs text-muted mt-1">
+                Ajusta el tamaño general de la interfaz para una lectura cómoda.
               </p>
 
               <div className="h-px w-full bg-line/60 my-3" aria-hidden="true" />
 
-              {/* Vista previa */}
-              <div className="flex flex-col gap-3">
-                <span className="text-xs font-bold tracking-wider text-muted uppercase">
+              <div className="rounded-2xl border border-line bg-soft/30 p-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted block mb-2">
                   Vista previa
                 </span>
-
-                <div
-                  aria-live="polite"
-                  className="rounded-3xl border border-line bg-soft/30 p-6 flex items-center justify-center text-center"
-                >
-                  <p className="text-ink font-semibold">
-                    Así se verá el texto del sistema.
-                  </p>
-                </div>
+                <p className="text-base text-ink">
+                  Así se verá el texto del sistema.
+                </p>
               </div>
             </div>
           )}
 
-          {/* ─── Sección Accesibilidad ────────────────────────────────────── */}
+          {/* ─── Sección Accesibilidad ─────────────────────────────────────── */}
           {seccionActiva === 'accesibilidad' && (
             <div
               id="panel-accesibilidad"
@@ -240,28 +405,26 @@ export function Configuracion() {
                 <span className="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
               </div>
 
-              <div className="flex flex-col gap-3 pt-1">
-                {/* Interruptor Reducir el movimiento */}
-                <div className="flex items-center justify-between rounded-2xl border border-line bg-card/70 p-4">
+              <div className="flex flex-col divide-y divide-line/60">
+                {/* Reducir movimiento */}
+                <div className="flex items-center justify-between py-4">
                   <div className="flex flex-col gap-0.5 pr-4">
                     <span className="text-sm font-bold text-ink">
                       Reducir el movimiento
                     </span>
                     <span className="text-xs text-muted">
-                      Quita las transiciones y animaciones.
+                      Desactiva animaciones de apertura, cierre y transiciones.
                     </span>
                   </div>
                   <Interruptor
                     activo={movimiento === 'reducir'}
-                    onAlternar={() =>
-                      setMovimiento(movimiento === 'reducir' ? 'sistema' : 'reducir')
-                    }
+                    onAlternar={(activo) => setMovimiento(activo ? 'reducir' : 'sistema')}
                     etiqueta="Reducir el movimiento"
                   />
                 </div>
 
-                {/* Interruptor Contraste alto */}
-                <div className="flex items-center justify-between rounded-2xl border border-line bg-card/70 p-4">
+                {/* Contraste alto */}
+                <div className="flex items-center justify-between py-4">
                   <div className="flex flex-col gap-0.5 pr-4">
                     <span className="text-sm font-bold text-ink">
                       Contraste alto
@@ -290,6 +453,29 @@ export function Configuracion() {
           <span>Sincronizado localmente</span>
         </footer>
       </main>
+
+      {/* Diálogo para recortar y ajustar la foto seleccionada */}
+      {dialogoAjustarAbierto && archivoSeleccionado && vistaPreviaActual && (
+        <DialogoAjustarFoto
+          abierto={dialogoAjustarAbierto}
+          archivo={archivoSeleccionado}
+          vistaPrevia={vistaPreviaActual}
+          procesarImagen={(arch, recorte) => platform.procesarImagen(arch, recorte)}
+          onGuardar={manejarGuardarFoto}
+          onCancelar={manejarCerrarDialogoAjustar}
+        />
+      )}
+
+      {/* Diálogo de confirmación para quitar foto de perfil */}
+      <Dialogo
+        abierto={dialogoConfirmarQuitar}
+        titulo="¿Quitar foto de perfil?"
+        mensaje="Volverás a ver tus iniciales como imagen de perfil. Podrás subir una nueva foto cuando quieras."
+        textoConfirmar="Quitar foto"
+        textoCancelar="Cancelar"
+        onConfirmar={manejarConfirmarQuitar}
+        onCancelar={() => setDialogoConfirmarQuitar(false)}
+      />
     </div>
   );
 }

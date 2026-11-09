@@ -538,4 +538,64 @@ describe('MonitorProcesos (Ventana Administración)', () => {
       expect(screen.getByText('Todavía no hay eventos.')).toBeInTheDocument();
     });
   });
+
+  describe('Avatares y gestión de foto en Administración', () => {
+    it('muestra avatares de 40 px con la foto del usuario en la tabla si existe', () => {
+      const fotoUrl = 'data:image/png;base64,foto_valery_40';
+      act(() => {
+        useUsuariosStore.getState().cambiarFoto(usuarioEstandar, usuarioEstandar.id, fotoUrl);
+      });
+
+      const { container } = render(<MonitorProcesos />);
+
+      // Verificar que la tabla contiene la imagen de avatar
+      const imgAvatar = container.querySelector('tbody img');
+      expect(imgAvatar).not.toBeNull();
+      expect(imgAvatar).toHaveAttribute('src', fotoUrl);
+      expect(imgAvatar?.closest('span')).toHaveClass('h-10', 'w-10');
+    });
+
+    it('en el panel Editar muestra el avatar, el texto informativo y el botón Quitar foto condicional con confirmación', () => {
+      const fotoUrl = 'data:image/png;base64,foto_valery_panel';
+      act(() => {
+        useUsuariosStore.getState().cambiarFoto(usuarioEstandar, usuarioEstandar.id, fotoUrl);
+      });
+
+      render(<MonitorProcesos />);
+
+      // Abrir panel Editar del usuario estándar
+      const botonesEditar = screen.getAllByRole('button', { name: 'Editar' });
+      fireEvent.click(botonesEditar[0]);
+
+      // Muestra el panel de edición
+      expect(screen.getByRole('heading', { name: new RegExp(`Editar a ${usuarioEstandar.nombre}`, 'i') })).toBeInTheDocument();
+
+      // Muestra el texto informativo
+      expect(screen.getByText('Solo la persona usuaria puede cambiar su foto.')).toBeInTheDocument();
+
+      // El administrador no ve ningún botón para subir o cambiar fotos ajenas
+      expect(screen.queryByRole('button', { name: /Cambiar foto/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Subir foto/i })).not.toBeInTheDocument();
+
+      // Botón Quitar foto presente porque el usuario tiene foto
+      const btnQuitar = screen.getByRole('button', { name: 'Quitar foto' });
+      expect(btnQuitar).toBeInTheDocument();
+
+      // Pulsar Quitar foto abre diálogo de confirmación
+      fireEvent.click(btnQuitar);
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`¿Quitar foto de ${usuarioEstandar.nombre}\\?`, 'i'))).toBeInTheDocument();
+
+      // Confirmar quitar foto
+      const btnConfirmar = within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Quitar foto' });
+      act(() => {
+        fireEvent.click(btnConfirmar);
+      });
+
+      // El diálogo se cierra y la foto se elimina
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      const usuarioActualizado = useUsuariosStore.getState().usuarios.find((u) => u.id === usuarioEstandar.id);
+      expect(usuarioActualizado?.foto).toBeUndefined();
+    });
+  });
 });

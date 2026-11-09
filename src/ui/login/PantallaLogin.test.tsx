@@ -135,4 +135,43 @@ describe('PantallaLogin', () => {
     fireEvent.click(btnEntrar);
     expect(onIngresar).not.toHaveBeenCalled();
   });
+
+  it('renderiza avatares a 96 px y muestra la foto si existe', () => {
+    const usuarioConFoto = {
+      ...USUARIOS_SEMILLA[0],
+      foto: 'data:image/png;base64,foto_valery_96',
+    };
+    render(
+      <PantallaLogin
+        onIngresar={() => undefined}
+        usuarios={[usuarioConFoto, USUARIOS_SEMILLA[1]]}
+      />
+    );
+
+    const imgValery = screen.getByRole('img', { name: usuarioConFoto.nombre });
+    expect(imgValery).toHaveAttribute('src', 'data:image/png;base64,foto_valery_96');
+    expect(imgValery.closest('span')).toHaveClass('h-24', 'w-24');
+  });
+
+  it('con la cuenta bloqueada en el login, la foto aparece atenuada con el candado', () => {
+    const usuarioBloqueadoConFoto = {
+      ...USUARIOS_SEMILLA[1], // Mateo está bloqueado
+      foto: 'data:image/png;base64,foto_mateo_bloqueado',
+    };
+    const { container } = render(
+      <PantallaLogin
+        onIngresar={() => undefined}
+        usuarios={[USUARIOS_SEMILLA[0], usuarioBloqueadoConFoto]}
+      />
+    );
+
+    const imgMateo = screen.getByRole('img', { name: usuarioBloqueadoConFoto.nombre });
+    expect(imgMateo).toBeInTheDocument();
+
+    const circulo = imgMateo.closest('span');
+    expect(circulo).toHaveClass('opacity-60');
+
+    const candado = container.querySelector('.opacity-60')?.parentElement?.querySelector('svg');
+    expect(candado).toBeInTheDocument();
+  });
 });

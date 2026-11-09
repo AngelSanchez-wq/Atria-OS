@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { Boton } from '../components/Boton';
+import { Avatar } from '../components/Avatar';
+import { Dialogo } from '../components/Dialogo';
 import { Interruptor } from '../components/Interruptor';
 import { IdApp, LimitesUsuario, Usuario } from '../../kernel/types';
 import { APPS } from '../../config/apps';
@@ -10,6 +12,9 @@ import {
   MIN_MEMORIA_USUARIO_MB,
   MIN_TAREAS_ACTIVAS,
 } from '../../kernel/users/constantes';
+import { useUsuariosStore } from '../../store/usuarios';
+import { useSesion } from '../../store/sesion';
+import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 
 type PanelEditarLimitesProps = {
   usuario: Usuario | null;
@@ -58,14 +63,23 @@ function PanelEditarLimitesContenido({
   ) => { ok: boolean; motivo?: string };
   onCerrar: () => void;
 }) {
+  const usuarios = useUsuariosStore((s) => s.usuarios);
+  const quitarFotoStore = useUsuariosStore((s) => s.quitarFoto);
+  const usuarioSesion = useSesion((s) => s.usuario);
+  const actor = usuarioSesion ?? usuarios.find((u) => u.rol === 'admin') ?? USUARIOS_SEMILLA[2];
+
+  // Mantener actualizado el usuario si se modifica su foto en el store
+  const usuarioActual = usuarios.find((u) => u.id === usuario.id) ?? usuario;
+
+  const [dialogoQuitarFoto, setDialogoQuitarFoto] = useState(false);
   const [appsHabilitadas, setAppsHabilitadas] = useState<IdApp[]>(
-    () => usuario.limites.appsHabilitadas ?? []
+    () => usuarioActual.limites.appsHabilitadas ?? []
   );
   const [maxTareas, setMaxTareas] = useState(
-    () => usuario.limites.maxTareasActivas ?? 3
+    () => usuarioActual.limites.maxTareasActivas ?? 3
   );
   const [memoriaMb, setMemoriaMb] = useState(
-    () => usuario.limites.memoriaMaximaMb ?? 1024
+    () => usuarioActual.limites.memoriaMaximaMb ?? 1024
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -93,7 +107,7 @@ function PanelEditarLimitesContenido({
 
   const manejarGuardar = () => {
     setError(null);
-    const res = onGuardar(usuario.id, {
+    const res = onGuardar(usuarioActual.id, {
       appsHabilitadas,
       maxTareasActivas: maxTareas,
       memoriaMaximaMb: memoriaMb,
@@ -109,21 +123,15 @@ function PanelEditarLimitesContenido({
 
   return (
     <aside
-      aria-label={`Límites de ${usuario.nombre}`}
+      aria-label={`Límites de ${usuarioActual.nombre}`}
       className="absolute top-0 right-0 z-20 flex h-full w-full max-w-sm flex-col justify-between border-l border-line bg-card p-6 shadow-xl"
     >
       <div className="flex flex-col gap-6 overflow-y-auto">
         {/* Cabecera del panel */}
         <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="flex items-center gap-3">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-soft text-sm font-bold text-accent-strong"
-              aria-hidden="true"
-            >
-              {usuario.inicial}
-            </span>
             <h3 className="font-fredoka text-lg font-semibold text-ink">
-              Límites de {usuario.nombre}
+              Editar a {usuarioActual.nombre}
             </h3>
           </div>
           <button
@@ -134,6 +142,34 @@ function PanelEditarLimitesContenido({
           >
             <X size={18} />
           </button>
+        </div>
+
+        {/* Sección: Avatar y Foto del usuario */}
+        <div className="flex flex-col items-center gap-2.5 py-1 text-center">
+          <Avatar
+            nombre={usuarioActual.nombre}
+            inicial={usuarioActual.inicial}
+            esAdmin={usuarioActual.rol === 'admin'}
+            foto={usuarioActual.foto}
+            tamanoPx={80}
+            mostrarNombre={false}
+          />
+
+          {usuarioActual.foto && (
+            <Boton
+              type="button"
+              variante="secundario"
+              onClick={() => setDialogoQuitarFoto(true)}
+              className="flex items-center gap-2 !px-3 !py-1 text-xs"
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              <span>Quitar foto</span>
+            </Boton>
+          )}
+
+          <p className="text-xs text-muted max-w-[220px]">
+            Solo la persona usuaria puede cambiar su foto.
+          </p>
         </div>
 
         {/* Sección: Apps Habilitadas */}
@@ -183,28 +219,11 @@ function PanelEditarLimitesContenido({
                 aria-label="Reducir tareas"
                 disabled={maxTareas <= MIN_TAREAS_ACTIVAS}
                 onClick={decrementarTareas}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-card text-muted hover:text-ink disabled:opacity-40 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-card text-ink transition-colors hover:bg-soft disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span
-                role="spinbutton"
-                aria-valuenow={maxTareas}
-                aria-valuemin={MIN_TAREAS_ACTIVAS}
-                aria-valuemax={MAX_TAREAS_ACTIVAS}
-                aria-label="Tareas activas simultáneas"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    decrementarTareas();
-                  } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    incrementarTareas();
-                  }
-                }}
-                className="w-4 text-center font-bold text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-xs"
-              >
+              <span className="w-4 text-center font-bold text-ink">
                 {maxTareas}
               </span>
               <button
@@ -212,7 +231,7 @@ function PanelEditarLimitesContenido({
                 aria-label="Aumentar tareas"
                 disabled={maxTareas >= MAX_TAREAS_ACTIVAS}
                 onClick={incrementarTareas}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-card text-muted hover:text-ink disabled:opacity-40 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-card text-ink transition-colors hover:bg-soft disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <ChevronRight size={16} />
               </button>
@@ -220,14 +239,14 @@ function PanelEditarLimitesContenido({
           </div>
         </div>
 
-        {/* Sección: Memoria Máxima */}
-        <div className="flex flex-col gap-2">
+        {/* Sección: Memoria Máxima (MB) */}
+        <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-muted">
               Memoria Máxima
             </span>
-            <span className="text-xs font-bold text-ink">
-              {memoriaMb} de {MAX_MEMORIA_USUARIO_MB} MB
+            <span className="text-xs font-bold text-accent-strong">
+              {memoriaMb} MB
             </span>
           </div>
           <input
@@ -273,6 +292,20 @@ function PanelEditarLimitesContenido({
           </Boton>
         </div>
       </div>
+
+      {/* Diálogo de confirmación para que el admin quite la foto */}
+      <Dialogo
+        abierto={dialogoQuitarFoto}
+        titulo={`¿Quitar foto de ${usuarioActual.nombre}?`}
+        mensaje="Se restablecerán las iniciales del usuario como imagen de perfil."
+        textoConfirmar="Quitar foto"
+        textoCancelar="Cancelar"
+        onConfirmar={() => {
+          quitarFotoStore(actor, usuarioActual.id);
+          setDialogoQuitarFoto(false);
+        }}
+        onCancelar={() => setDialogoQuitarFoto(false)}
+      />
     </aside>
   );
 }
