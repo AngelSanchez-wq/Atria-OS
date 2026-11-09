@@ -16,6 +16,32 @@ export type EstadoRedPlatform = {
   calidad?: string;
 };
 
+export type DatosRecorte = {
+  x: number;
+  y: number;
+  lado: number;
+};
+
+export type VistaPreviaFoto = {
+  url: string;
+  ancho: number;
+  alto: number;
+  liberar: () => void;
+};
+
+export type ErrorProcesamientoImagen =
+  | 'archivo-invalido'
+  | 'decodificacion-fallida'
+  | 'imagen-demasiado-grande'
+  | 'contexto-canvas-no-disponible';
+
+export class ErrorImagenPlatform extends Error {
+  constructor(public readonly motivo: ErrorProcesamientoImagen, mensaje: string) {
+    super(mensaje);
+    this.name = 'ErrorImagenPlatform';
+  }
+}
+
 export interface Platform {
   /** Obtiene la preferencia de tema del sistema operativo subyacente. */
   getSystemTheme(): TemaEfectivo;
@@ -41,6 +67,18 @@ export interface Platform {
   getNetworkStatus(): EstadoRedPlatform;
   /** Suscribe a cambios de conectividad (online/offline) y calidad de red. */
   onNetworkChange(callback: (estado: EstadoRedPlatform) => void): () => void;
+
+  /**
+   * Obtiene las dimensiones naturales de una imagen y genera una URL de objeto temporal para vista previa.
+   * La URL debe liberarse llamando a `liberar()` para prevenir fugas de memoria.
+   */
+  obtenerVistaPreviaFoto(archivo: File | Blob): Promise<VistaPreviaFoto>;
+
+  /**
+   * Procesa, recorta y redimensiona una imagen al tamaño estándar de avatar (256x256),
+   * retornando una data URL en JPEG con compresión controlada.
+   */
+  procesarImagen(archivo: File | Blob, recorte: DatosRecorte): Promise<string>;
 }
 
 export type { AudioPlayer };

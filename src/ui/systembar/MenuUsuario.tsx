@@ -64,8 +64,16 @@ export function MenuUsuario({
     >
       {/* Cabecera con Avatar grande */}
       <div className="flex flex-col items-center gap-2 pt-2 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-accent bg-soft text-lg font-bold text-ink">
-          {usuario.inicial}
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-accent bg-soft text-lg font-bold text-ink overflow-hidden">
+          {usuario.foto ? (
+            <img
+              src={usuario.foto}
+              alt=""
+              className="h-full w-full object-cover rounded-full"
+            />
+          ) : (
+            usuario.inicial
+          )}
         </div>
         <div className="flex flex-col">
           <span className="font-fredoka text-base font-semibold text-ink">

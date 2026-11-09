@@ -308,8 +308,16 @@ export function BarraSistema({
           onClick={alternarMenuUsuario}
           className="text-ink"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-accent bg-soft text-sm font-bold">
-            {inicial}
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border border-accent bg-soft text-sm font-bold overflow-hidden">
+            {usuario?.foto ? (
+              <img
+                src={usuario.foto}
+                alt=""
+                className="h-full w-full object-cover rounded-full"
+              />
+            ) : (
+              inicial
+            )}
           </span>
         </BotonIcono>
 

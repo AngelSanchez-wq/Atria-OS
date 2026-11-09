@@ -8,6 +8,7 @@ type AvatarProps = {
   bloqueado?: boolean;
   imagen?: string;
   foto?: string;
+  alt?: string;
   onSeleccionar: () => void;
   /** Para el grupo de radios: solo el seleccionado queda en el tab order. */
   tabIndex?: number;
@@ -21,6 +22,7 @@ export function Avatar({
   bloqueado = false,
   imagen,
   foto,
+  alt,
   onSeleccionar,
   tabIndex = 0,
 }: AvatarProps) {
@@ -59,7 +61,7 @@ export function Avatar({
           {urlFoto ? (
             <img
               src={urlFoto}
-              alt={nombre}
+              alt={alt ?? nombre}
               className="h-full w-full object-cover rounded-full"
             />
           ) : (

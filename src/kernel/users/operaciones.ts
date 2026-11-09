@@ -7,6 +7,7 @@ import {
   MIN_TAREAS_ACTIVAS,
   MOTIVOS_ERROR_USUARIOS,
 } from './constantes';
+import { fotoValida } from './foto';
 
 export type ResultadoOperacionUsuario =
   | { ok: true; usuario: Usuario; usuarios: Usuario[] }
@@ -265,6 +266,123 @@ export function actualizarLimites(
       ...nuevosLimites,
     },
   };
+
+  return {
+    ok: true,
+    usuario: usuarioActualizado,
+    usuarios: usuarios.map((u) => (u.id === usuarioActualizado.id ? usuarioActualizado : u)),
+  };
+}
+
+/**
+ * Cambia la foto de perfil de un usuario.
+ * Reglas de seguridad:
+ * - El actor debe estar activo (no bloqueado).
+ * - Solo el propio usuario puede cambiar su foto (un administrador no puede cambiar la de otro).
+ * - La foto debe ser un data URL válido y no exceder los límites establecidos.
+ */
+export function cambiarFoto(
+  actor: Usuario,
+  usuarioId: string,
+  dataUrl: string
+): ResultadoOperacionUsuario;
+export function cambiarFoto(
+  actor: Usuario,
+  usuarios: readonly Usuario[],
+  usuarioId: string,
+  dataUrl: string
+): ResultadoOperacionUsuario;
+export function cambiarFoto(
+  actor: Usuario,
+  arg2: readonly Usuario[] | string,
+  arg3: string,
+  arg4?: string
+): ResultadoOperacionUsuario {
+  const usuarios: readonly Usuario[] = Array.isArray(arg2) ? arg2 : [actor];
+  const usuarioId = typeof arg2 === 'string' ? arg2 : arg3;
+  const dataUrl = typeof arg2 === 'string' ? arg3 : (arg4 ?? '');
+
+  if (actor.estado === 'bloqueado') {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.CUENTA_BLOQUEADA };
+  }
+
+  if (actor.id !== usuarioId) {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.CAMBIO_FOTO_AJENA_NO_PERMITIDO };
+  }
+
+  const objetivo = usuarios.find((u) => u.id === usuarioId);
+  if (!objetivo) {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_EXISTE };
+  }
+
+  if (objetivo.estado === 'bloqueado') {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.CUENTA_BLOQUEADA };
+  }
+
+  if (!fotoValida(dataUrl)) {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.FOTO_INVALIDA };
+  }
+
+  const usuarioActualizado: Usuario = {
+    ...objetivo,
+    foto: dataUrl,
+  };
+
+  return {
+    ok: true,
+    usuario: usuarioActualizado,
+    usuarios: usuarios.map((u) => (u.id === usuarioActualizado.id ? usuarioActualizado : u)),
+  };
+}
+
+/**
+ * Quita la foto de perfil de un usuario.
+ * Reglas de seguridad:
+ * - El actor debe estar activo (no bloqueado).
+ * - Solo el propio usuario o un administrador pueden quitar la foto.
+ * - Una cuenta bloqueada no puede cambiarla ni recibir cambios.
+ */
+export function quitarFoto(
+  actor: Usuario,
+  usuarioId: string
+): ResultadoOperacionUsuario;
+export function quitarFoto(
+  actor: Usuario,
+  usuarios: readonly Usuario[],
+  usuarioId: string
+): ResultadoOperacionUsuario;
+export function quitarFoto(
+  actor: Usuario,
+  arg2: readonly Usuario[] | string,
+  arg3?: string
+): ResultadoOperacionUsuario {
+  const usuarios: readonly Usuario[] = Array.isArray(arg2) ? arg2 : [actor];
+  const usuarioId = typeof arg2 === 'string' ? arg2 : (arg3 ?? '');
+
+  if (actor.estado === 'bloqueado') {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.CUENTA_BLOQUEADA };
+  }
+
+  const esPropioUsuario = actor.id === usuarioId;
+  const esAdmin = actor.rol === 'admin';
+
+  if (!esPropioUsuario && !esAdmin) {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ACCION_NO_PERMITIDA };
+  }
+
+  const objetivo = usuarios.find((u) => u.id === usuarioId);
+  if (!objetivo) {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_EXISTE };
+  }
+
+  if (objetivo.estado === 'bloqueado') {
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.CUENTA_BLOQUEADA };
+  }
+
+  const usuarioActualizado: Usuario = {
+    ...objetivo,
+  };
+  delete usuarioActualizado.foto;
 
   return {
     ok: true,

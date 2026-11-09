@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useUsuariosStore, CLAVE_PERSISTENCIA_USUARIOS } from './usuarios';
 import { useRegistroStore } from './registro';
+import { useSesion } from './sesion';
 import { platform } from '../platform/web';
 import { Usuario } from '../kernel/types';
 
@@ -92,5 +93,74 @@ describe('useUsuariosStore', () => {
     const persistido = platform.loadState<Usuario[]>(CLAVE_PERSISTENCIA_USUARIOS, []);
     const persistidoUsuario = persistido.find((u) => u.id === estandar.id);
     expect(persistidoUsuario?.ultimoAcceso).toBe(ahora);
+  });
+
+  it('permite cambiar la foto de perfil, persiste, actualiza la sesión activa y registra el evento sin la imagen', () => {
+    const estandar = obtenerEstandar();
+    useSesion.getState().ingresar(estandar);
+
+    const fotoDataUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...';
+    const res = useUsuariosStore.getState().cambiarFoto(estandar, estandar.id, fotoDataUrl);
+
+    expect(res.ok).toBe(true);
+
+    // Actualiza en el store
+    const usuarioEnStore = useUsuariosStore.getState().usuarios.find((u) => u.id === estandar.id);
+    expect(usuarioEnStore?.foto).toBe(fotoDataUrl);
+
+    // Persiste en platform
+    const persistido = platform.loadState<Usuario[]>(CLAVE_PERSISTENCIA_USUARIOS, []);
+    const persistidoUsuario = persistido.find((u) => u.id === estandar.id);
+    expect(persistidoUsuario?.foto).toBe(fotoDataUrl);
+
+    // Actualiza inmediatamente la sesión activa
+    expect(useSesion.getState().usuario?.foto).toBe(fotoDataUrl);
+
+    // Registra el evento en categoría 'sesion'
+    const eventos = useRegistroStore.getState().eventos;
+    const evFoto = eventos.find((e) => e.mensaje.includes('Foto de perfil actualizada'));
+    expect(evFoto).toBeDefined();
+    expect(evFoto?.categoria).toBe('sesion');
+    expect(evFoto?.gravedad).toBe('info');
+
+    // ¡NUNCA guarda la imagen ni el data URL en el registro de eventos!
+    const registroSerializado = JSON.stringify(eventos);
+    expect(registroSerializado).not.toContain(fotoDataUrl);
+    expect(registroSerializado).not.toContain('base64');
+  });
+
+  it('permite quitar la foto de perfil al propio usuario o un admin, y audita quién la quitó', () => {
+    const admin = obtenerAdmin();
+    const estandar = obtenerEstandar();
+
+    // Primero iniciamos sesión con el usuario estándar
+    useSesion.getState().ingresar(estandar);
+
+    // Asignamos una foto
+    const fotoDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    useUsuariosStore.getState().cambiarFoto(estandar, estandar.id, fotoDataUrl);
+
+    expect(useSesion.getState().usuario?.foto).toBe(fotoDataUrl);
+
+    // Admin quita la foto del usuario estándar
+    const res = useUsuariosStore.getState().quitarFoto(admin, estandar.id);
+    expect(res.ok).toBe(true);
+
+    // Desaparece del store
+    const usuarioEnStore = useUsuariosStore.getState().usuarios.find((u) => u.id === estandar.id);
+    expect(usuarioEnStore?.foto).toBeUndefined();
+
+    // Sesión activa se sincroniza
+    expect(useSesion.getState().usuario?.foto).toBeUndefined();
+
+    // Evento auditado indicando la intervención del admin
+    const eventos = useRegistroStore.getState().eventos;
+    const evQuitar = eventos.find((e) => e.mensaje.includes('Foto de perfil quitada'));
+    expect(evQuitar).toBeDefined();
+    expect(evQuitar?.categoria).toBe('sesion');
+    expect(evQuitar?.mensaje).toContain(admin.nombre);
+
+    // No hay data URLs
+    expect(JSON.stringify(eventos)).not.toContain('base64');
   });
 });

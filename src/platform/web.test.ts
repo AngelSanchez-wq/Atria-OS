@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WebPlatform } from './web';
+import { ErrorImagenPlatform } from './types';
 
 describe('WebPlatform', () => {
   let p: WebPlatform;
@@ -213,6 +213,174 @@ describe('WebPlatform', () => {
         'change',
         expect.any(Function)
       );
+    });
+  });
+
+  describe('Procesamiento de imágenes y avatares', () => {
+    let revokeSpy: ReturnType<typeof vi.fn>;
+    let createObjectURLSpy: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      createObjectURLSpy = vi.fn(() => 'blob:http://localhost/mock-blob-uuid');
+      revokeSpy = vi.fn();
+      globalThis.URL.createObjectURL = createObjectURLSpy as unknown as typeof URL.createObjectURL;
+      globalThis.URL.revokeObjectURL = revokeSpy as unknown as typeof URL.revokeObjectURL;
+    });
+
+    it('rechaza archivos vacíos o nulos al obtener vista previa', async () => {
+      const archivoVacio = new File([], 'vacio.jpg', { type: 'image/jpeg' });
+      await expect(p.obtenerVistaPreviaFoto(archivoVacio)).rejects.toBeInstanceOf(ErrorImagenPlatform);
+      await expect(p.obtenerVistaPreviaFoto(archivoVacio)).rejects.toMatchObject({
+        motivo: 'archivo-invalido',
+      });
+    });
+
+    it('rechaza archivos mayores a 5 MB al obtener vista previa', async () => {
+      const archivoGrande = new File([new Uint8Array(6 * 1024 * 1024)], 'grande.jpg', {
+        type: 'image/jpeg',
+      });
+      await expect(p.obtenerVistaPreviaFoto(archivoGrande)).rejects.toMatchObject({
+        motivo: 'imagen-demasiado-grande',
+      });
+    });
+
+    it('obtiene dimensiones y vista previa liberable para un archivo válido', async () => {
+      const mockImgInstance = {
+        naturalWidth: 800,
+        naturalHeight: 600,
+        onload: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+        set src(_val: string) {
+          setTimeout(() => this.onload?.(), 0);
+        },
+      };
+
+      vi.stubGlobal('Image', vi.fn(function () {
+        return mockImgInstance;
+      }));
+
+      const archivo = new File(['mock content'], 'foto.jpg', { type: 'image/jpeg' });
+      const vistaPrevia = await p.obtenerVistaPreviaFoto(archivo);
+
+      expect(vistaPrevia.url).toBe('blob:http://localhost/mock-blob-uuid');
+      expect(vistaPrevia.ancho).toBe(800);
+      expect(vistaPrevia.alto).toBe(600);
+
+      vistaPrevia.liberar();
+      expect(revokeSpy).toHaveBeenCalledWith('blob:http://localhost/mock-blob-uuid');
+    });
+
+    it('rechaza si la imagen no se puede decodificar', async () => {
+      const mockImgInstance = {
+        naturalWidth: 0,
+        naturalHeight: 0,
+        onload: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+        set src(_val: string) {
+          setTimeout(() => this.onerror?.(), 0);
+        },
+      };
+
+      vi.stubGlobal('Image', vi.fn(function () {
+        return mockImgInstance;
+      }));
+
+      const archivo = new File(['corrupto'], 'roto.jpg', { type: 'image/jpeg' });
+      await expect(p.obtenerVistaPreviaFoto(archivo)).rejects.toMatchObject({
+        motivo: 'decodificacion-fallida',
+      });
+      expect(revokeSpy).toHaveBeenCalledWith('blob:http://localhost/mock-blob-uuid');
+    });
+
+    it('rechaza imágenes con dimensiones gigantescas (> 8192px)', async () => {
+      const mockImgInstance = {
+        naturalWidth: 10000,
+        naturalHeight: 10000,
+        onload: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+        set src(_val: string) {
+          setTimeout(() => this.onload?.(), 0);
+        },
+      };
+
+      vi.stubGlobal('Image', vi.fn(function () {
+        return mockImgInstance;
+      }));
+
+      const archivo = new File(['gigante'], 'gigante.jpg', { type: 'image/jpeg' });
+      await expect(p.obtenerVistaPreviaFoto(archivo)).rejects.toMatchObject({
+        motivo: 'imagen-demasiado-grande',
+      });
+      expect(revokeSpy).toHaveBeenCalledWith('blob:http://localhost/mock-blob-uuid');
+    });
+
+    it('procesa y recorta la imagen redimensionándola a 256x256', async () => {
+      const mockImgInstance = {
+        naturalWidth: 800,
+        naturalHeight: 600,
+        onload: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+        set src(_val: string) {
+          setTimeout(() => this.onload?.(), 0);
+        },
+      };
+
+      vi.stubGlobal('Image', vi.fn(function () {
+        return mockImgInstance;
+      }));
+
+      const drawImageSpy = vi.fn();
+      const toDataURLSpy = vi.fn(() => 'data:image/jpeg;base64,resultado_procesado');
+
+      const origCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+        if (tag === 'canvas') {
+          return {
+            width: 0,
+            height: 0,
+            getContext: vi.fn(() => ({
+              drawImage: drawImageSpy,
+            })),
+            toDataURL: toDataURLSpy,
+          } as unknown as HTMLCanvasElement;
+        }
+        return origCreateElement(tag);
+      });
+
+      const archivo = new File(['mock content'], 'avatar.jpg', { type: 'image/jpeg' });
+      const recorte = { x: 100, y: 0, lado: 600 };
+
+      const resultado = await p.procesarImagen(archivo, recorte);
+
+      expect(resultado).toBe('data:image/jpeg;base64,resultado_procesado');
+      expect(drawImageSpy).toHaveBeenCalledWith(
+        mockImgInstance,
+        100,
+        0,
+        600,
+        600,
+        0,
+        0,
+        256,
+        256
+      );
+      expect(toDataURLSpy).toHaveBeenCalledWith('image/jpeg', 0.85);
+      expect(revokeSpy).toHaveBeenCalledWith('blob:http://localhost/mock-blob-uuid');
+    });
+
+    it('procesarImagen valida archivo y recorte', async () => {
+      const archivoVacio = new File([], 'vacio.jpg', { type: 'image/jpeg' });
+      await expect(p.procesarImagen(archivoVacio, { x: 0, y: 0, lado: 100 })).rejects.toMatchObject({
+        motivo: 'archivo-invalido',
+      });
+
+      const archivoValido = new File(['abc'], 'valido.jpg', { type: 'image/jpeg' });
+      await expect(p.procesarImagen(archivoValido, { x: 0, y: 0, lado: 0 })).rejects.toMatchObject({
+        motivo: 'archivo-invalido',
+      });
+      await expect(p.procesarImagen(archivoValido, { x: -10, y: 0, lado: 100 })).rejects.toMatchObject({
+        motivo: 'archivo-invalido',
+      });
     });
   });
 });

@@ -8,11 +8,14 @@ import {
   desbloquearUsuario as opDesbloquearUsuario,
   cambiarRol as opCambiarRol,
   actualizarLimites as opActualizarLimites,
+  cambiarFoto as opCambiarFoto,
+  quitarFoto as opQuitarFoto,
   DatosCrearUsuario,
   ResultadoOperacionUsuario,
 } from '../kernel/users/operaciones';
 import { platform } from '../platform/web';
 import { registrar } from '../system/logging/servicio';
+import { useSesion } from './sesion';
 
 export const CLAVE_PERSISTENCIA_USUARIOS = 'atria_usuarios';
 
@@ -47,6 +50,12 @@ export type UsuariosStore = {
     usuarioId: string,
     nuevosLimites: Partial<LimitesUsuario>
   ) => ResultadoOperacionUsuario;
+  cambiarFoto: (
+    actor: Usuario,
+    usuarioId: string,
+    dataUrl: string
+  ) => ResultadoOperacionUsuario;
+  quitarFoto: (actor: Usuario, usuarioId: string) => ResultadoOperacionUsuario;
   actualizarUltimoAcceso: (usuarioId: string, instante?: number) => void;
   restablecer: () => void;
 };
@@ -142,6 +151,59 @@ export const useUsuariosStore = create<UsuariosStore>((set, get) => ({
         categoria: 'seguridad',
         gravedad: 'info',
         mensaje: `Límites actualizados para ${resultado.usuario.nombre} por ${actor.nombre}`,
+        usuarioId: actor.id,
+      });
+    }
+
+    return resultado;
+  },
+
+  cambiarFoto: (actor, usuarioId, dataUrl) => {
+    const { usuarios } = get();
+    const resultado = opCambiarFoto(actor, usuarios, usuarioId, dataUrl);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      const sesionActual = useSesion.getState().usuario;
+      if (sesionActual && sesionActual.id === usuarioId) {
+        useSesion.setState({ usuario: resultado.usuario });
+      }
+
+      registrar({
+        categoria: 'sesion',
+        gravedad: 'info',
+        mensaje: `Foto de perfil actualizada para ${resultado.usuario.nombre}`,
+        usuarioId: actor.id,
+      });
+    }
+
+    return resultado;
+  },
+
+  quitarFoto: (actor, usuarioId) => {
+    const { usuarios } = get();
+    const resultado = opQuitarFoto(actor, usuarios, usuarioId);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      const sesionActual = useSesion.getState().usuario;
+      if (sesionActual && sesionActual.id === usuarioId) {
+        useSesion.setState({ usuario: resultado.usuario });
+      }
+
+      const mensaje =
+        actor.id !== usuarioId && actor.rol === 'admin'
+          ? `Foto de perfil quitada para ${resultado.usuario.nombre} por el administrador ${actor.nombre}`
+          : `Foto de perfil quitada para ${resultado.usuario.nombre}`;
+
+      registrar({
+        categoria: 'sesion',
+        gravedad: 'info',
+        mensaje,
         usuarioId: actor.id,
       });
     }

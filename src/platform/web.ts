@@ -4,12 +4,31 @@ import {
   AudioPlayer,
   EstadoBateriaPlatform,
   EstadoRedPlatform,
+  DatosRecorte,
+  VistaPreviaFoto,
+  ErrorImagenPlatform,
 } from './types';
 import {
   BATERIA_SIMULADA_NIVEL_INICIAL,
   BATERIA_SIMULADA_DESCARGA_INTERVALO_MS,
 } from '../kernel/power/bateria';
 import { formatearCalidadRed } from '../kernel/network/calidad';
+import {
+  LADO_FOTO_PX,
+  CALIDAD_COMPRESION_FOTO,
+  TAMANO_MAX_ENTRADA_BYTES,
+} from '../kernel/users/foto';
+
+/**
+ * Revoca de forma segura una URL de objeto temporal sin lanzar errores en entornos de prueba o SSR.
+ */
+function liberarUrlObjeto(url: string): void {
+  try {
+    URL.revokeObjectURL(url);
+  } catch {
+    // Silenciar excepciones al revocar URLs de objeto en entornos simulados
+  }
+}
 
 export class WebAudioPlayer implements AudioPlayer {
   private audio: HTMLAudioElement | null = null;
@@ -327,6 +346,165 @@ export class WebPlatform implements Platform {
         connRef.removeEventListener('change', notificar);
       }
     };
+  }
+
+  /**
+   * Obtiene las dimensiones naturales de una imagen y genera una URL de objeto temporal para vista previa.
+   * La URL debe liberarse llamando a `liberar()` para evitar fugas de memoria.
+   */
+  async obtenerVistaPreviaFoto(archivo: File | Blob): Promise<VistaPreviaFoto> {
+    if (!archivo || archivo.size === 0) {
+      throw new ErrorImagenPlatform('archivo-invalido', 'El archivo no es válido o está vacío');
+    }
+    if (archivo.size > TAMANO_MAX_ENTRADA_BYTES) {
+      throw new ErrorImagenPlatform('imagen-demasiado-grande', 'El archivo supera el tamaño máximo permitido (5 MB)');
+    }
+    if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+      throw new ErrorImagenPlatform('decodificacion-fallida', 'API URL no disponible');
+    }
+
+    const url = URL.createObjectURL(archivo);
+
+    // Intentar decodificar con createImageBitmap si existe para mejor rendimiento
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bmp = await createImageBitmap(archivo);
+        const ancho = bmp.width;
+        const alto = bmp.height;
+        bmp.close();
+        if (!ancho || !alto || ancho <= 0 || alto <= 0) {
+          liberarUrlObjeto(url);
+          throw new ErrorImagenPlatform('decodificacion-fallida', 'Dimensiones de imagen inválidas');
+        }
+        if (ancho > 8192 || alto > 8192) {
+          liberarUrlObjeto(url);
+          throw new ErrorImagenPlatform('imagen-demasiado-grande', 'La resolución de la imagen es excesiva');
+        }
+        return {
+          url,
+          ancho,
+          alto,
+          liberar: () => liberarUrlObjeto(url),
+        };
+      } catch (err) {
+        if (err instanceof ErrorImagenPlatform) {
+          throw err;
+        }
+        // Fallback a HTMLImageElement
+      }
+    }
+
+    return new Promise<VistaPreviaFoto>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const ancho = img.naturalWidth || img.width;
+        const alto = img.naturalHeight || img.height;
+        if (!ancho || !alto || ancho <= 0 || alto <= 0) {
+          liberarUrlObjeto(url);
+          reject(new ErrorImagenPlatform('decodificacion-fallida', 'Dimensiones de imagen inválidas'));
+          return;
+        }
+        if (ancho > 8192 || alto > 8192) {
+          liberarUrlObjeto(url);
+          reject(new ErrorImagenPlatform('imagen-demasiado-grande', 'La resolución de la imagen es excesiva'));
+          return;
+        }
+        resolve({
+          url,
+          ancho,
+          alto,
+          liberar: () => liberarUrlObjeto(url),
+        });
+      };
+      img.onerror = () => {
+        liberarUrlObjeto(url);
+        reject(new ErrorImagenPlatform('decodificacion-fallida', 'No se pudo decodificar la imagen'));
+      };
+      img.src = url;
+    });
+  }
+
+  /**
+   * Procesa, recorta y redimensiona una imagen al tamaño estándar de avatar (256x256),
+   * retornando una data URL en JPEG con compresión controlada.
+   */
+  async procesarImagen(archivo: File | Blob, recorte: DatosRecorte): Promise<string> {
+    if (!archivo || archivo.size === 0) {
+      throw new ErrorImagenPlatform('archivo-invalido', 'El archivo no es válido o está vacío');
+    }
+    if (archivo.size > TAMANO_MAX_ENTRADA_BYTES) {
+      throw new ErrorImagenPlatform('imagen-demasiado-grande', 'El archivo supera el tamaño máximo permitido (5 MB)');
+    }
+    if (recorte.lado <= 0 || recorte.x < 0 || recorte.y < 0) {
+      throw new ErrorImagenPlatform('archivo-invalido', 'Coordenadas de recorte inválidas');
+    }
+
+    const rx = Math.round(recorte.x);
+    const ry = Math.round(recorte.y);
+    const rLado = Math.round(recorte.lado);
+
+    // Intentar primero con createImageBitmap para eficiencia de memoria
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bmp = await createImageBitmap(archivo, rx, ry, rLado, rLado);
+        try {
+          if (typeof document === 'undefined') {
+            throw new ErrorImagenPlatform('contexto-canvas-no-disponible', 'Entorno DOM no disponible');
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = LADO_FOTO_PX;
+          canvas.height = LADO_FOTO_PX;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            throw new ErrorImagenPlatform('contexto-canvas-no-disponible', 'No se pudo obtener el contexto 2D del canvas');
+          }
+          ctx.drawImage(bmp, 0, 0, LADO_FOTO_PX, LADO_FOTO_PX);
+          return canvas.toDataURL('image/jpeg', CALIDAD_COMPRESION_FOTO);
+        } finally {
+          bmp.close();
+        }
+      } catch (err) {
+        if (err instanceof ErrorImagenPlatform) {
+          throw err;
+        }
+        // Fallback a HTMLImageElement
+      }
+    }
+
+    if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+      throw new ErrorImagenPlatform('decodificacion-fallida', 'API URL no disponible');
+    }
+
+    const url = URL.createObjectURL(archivo);
+    let img: HTMLImageElement;
+    try {
+      img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new ErrorImagenPlatform('decodificacion-fallida', 'No se pudo decodificar la imagen'));
+        image.src = url;
+      });
+    } catch (err) {
+      liberarUrlObjeto(url);
+      throw err;
+    }
+
+    try {
+      if (typeof document === 'undefined') {
+        throw new ErrorImagenPlatform('contexto-canvas-no-disponible', 'Entorno DOM no disponible');
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = LADO_FOTO_PX;
+      canvas.height = LADO_FOTO_PX;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new ErrorImagenPlatform('contexto-canvas-no-disponible', 'No se pudo obtener el contexto 2D del canvas');
+      }
+      ctx.drawImage(img, rx, ry, rLado, rLado, 0, 0, LADO_FOTO_PX, LADO_FOTO_PX);
+      return canvas.toDataURL('image/jpeg', CALIDAD_COMPRESION_FOTO);
+    } finally {
+      liberarUrlObjeto(url);
+    }
   }
 }
 

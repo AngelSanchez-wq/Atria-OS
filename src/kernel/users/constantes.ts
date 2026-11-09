@@ -38,6 +38,12 @@ export const MOTIVOS_ERROR_USUARIOS = {
   ULTIMO_ADMIN_ACTIVO: 'ultimo-admin-activo',
   AUTO_BLOQUEO_NO_PERMITIDO: 'auto-bloqueo-no-permitido',
   LIMITES_INVALIDOS: 'limites-invalidos',
+  CAMBIO_FOTO_AJENA_NO_PERMITIDO: 'cambio-foto-ajena-no-permitido',
+  CUENTA_BLOQUEADA: 'cuenta-bloqueada',
+  FOTO_INVALIDA: 'foto-invalida',
+  FORMATO_NO_PERMITIDO: 'formato-no-permitido',
+  ARCHIVO_MUY_GRANDE: 'archivo-muy-grande',
+  ACCION_NO_PERMITIDA: 'accion-no-permitida',
 } as const;
 
 /** Motivos de rechazo de apertura de apps evaluados por el kernel. */
