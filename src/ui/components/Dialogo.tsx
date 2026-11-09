@@ -11,41 +11,75 @@ type DialogoProps = {
   onCancelar: () => void;
 };
 
-export function Dialogo({
-  abierto,
+export function Dialogo(props: DialogoProps) {
+  if (!props.abierto) return null;
+
+  return <DialogoModal key="dialogo-alerta-activo" {...props} />;
+}
+
+function DialogoModal({
   titulo,
   mensaje,
   textoConfirmar = 'Terminar',
   textoCancelar = 'Cancelar',
   onConfirmar,
   onCancelar,
-}: DialogoProps) {
+}: Omit<DialogoProps, 'abierto'>) {
+  const onCancelarRef = useRef(onCancelar);
+  const onConfirmarRef = useRef(onConfirmar);
+
+  useEffect(() => {
+    onCancelarRef.current = onCancelar;
+    onConfirmarRef.current = onConfirmar;
+  }, [onCancelar, onConfirmar]);
+
   const botonCancelarRef = useRef<HTMLButtonElement>(null);
+  const botonConfirmarRef = useRef<HTMLButtonElement>(null);
   const dialogoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!abierto) return;
-
-    // Foco automático en el botón de cancelar para prevenir confirmaciones accidentales
+    // Foco automático en el botón de cancelar UNA SOLA VEZ al abrir para prevenir confirmaciones accidentales
     botonCancelarRef.current?.focus();
 
     const alPulsarTecla = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onCancelar();
+        onCancelarRef.current();
       }
     };
 
     window.addEventListener('keydown', alPulsarTecla);
     return () => window.removeEventListener('keydown', alPulsarTecla);
-  }, [abierto, onCancelar]);
+  }, []); // Dependencias vacías: no se vuelve a ejecutar con re-renders del padre
 
-  if (!abierto) return null;
+  const manejarTeclado = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+
+    const elementos = [botonCancelarRef.current, botonConfirmarRef.current].filter(
+      (el): el is HTMLButtonElement => el !== null && !el.hasAttribute('disabled')
+    );
+    if (elementos.length === 0) return;
+
+    const primero = elementos[0];
+    const ultimo = elementos[elementos.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === primero) {
+        e.preventDefault();
+        ultimo.focus();
+      }
+    } else {
+      if (document.activeElement === ultimo) {
+        e.preventDefault();
+        primero.focus();
+      }
+    }
+  };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-xs p-4 select-none"
-      onClick={onCancelar}
+      onClick={() => onCancelarRef.current()}
     >
       <div
         ref={dialogoRef}
@@ -54,6 +88,7 @@ export function Dialogo({
         aria-labelledby="dialogo-titulo"
         aria-describedby="dialogo-mensaje"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={manejarTeclado}
         className="flex w-full max-w-md flex-col gap-6 rounded-3xl border border-line bg-card p-6 shadow-xl"
       >
         <div className="flex flex-col gap-2">
@@ -69,14 +104,15 @@ export function Dialogo({
           <Boton
             ref={botonCancelarRef}
             variante="secundario"
-            onClick={onCancelar}
+            onClick={() => onCancelarRef.current()}
             className="!px-6 !py-2 text-sm"
           >
             {textoCancelar}
           </Boton>
           <Boton
+            ref={botonConfirmarRef}
             variante="principal"
-            onClick={onConfirmar}
+            onClick={() => onConfirmarRef.current()}
             className="!px-6 !py-2 text-sm"
           >
             {textoConfirmar}

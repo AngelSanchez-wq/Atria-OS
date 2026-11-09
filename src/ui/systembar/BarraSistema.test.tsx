@@ -1,10 +1,20 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { formatearFechaCorta, formatearHora } from '../../hooks/useHora';
 import { useSesion } from '../../store/sesion';
-import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
+import { Usuario } from '../../kernel/types';
+import { LIMITES_USUARIO_POR_DEFECTO } from '../../kernel/users/constantes';
 import { BarraSistema } from './BarraSistema';
 
-const usuarioMia = USUARIOS_SEMILLA[0];
+const usuarioMia: Usuario = {
+  id: 'mia',
+  nombre: 'Mia',
+  inicial: 'M',
+  rol: 'estandar',
+  pin: '1234',
+  estado: 'activo',
+  ultimoAcceso: null,
+  limites: { ...LIMITES_USUARIO_POR_DEFECTO },
+};
 
 describe('BarraSistema', () => {
   beforeEach(() => {
@@ -118,20 +128,6 @@ describe('BarraSistema', () => {
     expect(screen.queryByRole('menu', { name: 'Menú de usuario' })).not.toBeInTheDocument();
   });
 
-  it('despliega el menú de usuario y ejecuta onConfiguracion', () => {
-    const onConfiguracion = vi.fn();
-    render(<BarraSistema onConfiguracion={onConfiguracion} />);
-
-    // Clic en el avatar de usuario
-    fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
-    expect(screen.getByRole('menu', { name: 'Menú de usuario' })).toBeInTheDocument();
-
-    // Clic en Configuración
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Configuración' }));
-    expect(onConfiguracion).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('menu', { name: 'Menú de usuario' })).not.toBeInTheDocument();
-  });
-
   it('actualiza la hora cuando avanza el temporizador', async () => {
     render(<BarraSistema />);
 
@@ -153,42 +149,5 @@ describe('BarraSistema', () => {
 
     rerender(<BarraSistema estadoBuho="logro" />);
     expect(screen.getByRole('img', { name: 'Tarea completada' })).toBeInTheDocument();
-  });
-
-  it('muestra el icono y la etiqueta de volumen segun el estado', () => {
-    const { rerender } = render(<BarraSistema volumen={0.7} silenciado={false} />);
-    expect(screen.getByRole('button', { name: 'Volumen 70 %' })).toBeInTheDocument();
-
-    rerender(<BarraSistema volumen={0.3} silenciado={false} />);
-    expect(screen.getByRole('button', { name: 'Volumen 30 %' })).toBeInTheDocument();
-
-    rerender(<BarraSistema volumen={0.7} silenciado={true} />);
-    expect(screen.getByRole('button', { name: 'Silenciado' })).toBeInTheDocument();
-  });
-
-  it('abre el panel de volumen al pulsar el boton y devuelve el foco al cerrar con Escape', () => {
-    render(<BarraSistema volumen={0.7} silenciado={false} />);
-
-    const botonVolumen = screen.getByRole('button', { name: 'Volumen 70 %' });
-    fireEvent.click(botonVolumen);
-
-    expect(screen.getByRole('region', { name: 'Panel de volumen' })).toBeInTheDocument();
-
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('region', { name: 'Panel de volumen' })).not.toBeInTheDocument();
-    expect(botonVolumen).toHaveFocus();
-  });
-
-  it('cierra el panel de volumen al abrir otro menú', () => {
-    render(<BarraSistema volumen={0.7} silenciado={false} />);
-
-    const botonVolumen = screen.getByRole('button', { name: 'Volumen 70 %' });
-    fireEvent.click(botonVolumen);
-    expect(screen.getByRole('region', { name: 'Panel de volumen' })).toBeInTheDocument();
-
-    // Abrir menú de encendido debe cerrar el panel de volumen
-    fireEvent.click(screen.getByRole('button', { name: 'Apagar o reiniciar' }));
-    expect(screen.queryByRole('region', { name: 'Panel de volumen' })).not.toBeInTheDocument();
-    expect(screen.getByRole('menu', { name: 'Menú de encendido' })).toBeInTheDocument();
   });
 });

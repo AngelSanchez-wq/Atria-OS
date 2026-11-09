@@ -16,6 +16,8 @@ type ProcesosStore = {
     pid: number,
     opciones?: { autor?: string; desdeMonitor?: boolean }
   ) => void;
+  /** Actualiza la lista completa de procesos (utilizado por el planificador de CPU). */
+  actualizarProcesos: (procesos: PCB[]) => void;
 };
 
 export const useProcesos = create<ProcesosStore>((set, get) => ({
@@ -92,5 +94,9 @@ export const useProcesos = create<ProcesosStore>((set, get) => ({
         p.pid === pid ? terminarProceso(p) : p
       ),
     }));
+  },
+
+  actualizarProcesos: (nuevosProcesos) => {
+    set({ procesos: nuevosProcesos });
   },
 }));

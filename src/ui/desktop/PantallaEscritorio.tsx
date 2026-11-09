@@ -14,12 +14,14 @@ import { APPS } from '../../config/apps';
 import { BarraSistema } from '../systembar/BarraSistema';
 import { AvisoUrgente } from '../components/AvisoUrgente';
 import { registrar } from '../../system/logging/servicio';
+import { puedeAbrirApp, cupoDeTareas } from '../../kernel/users/decisiones';
 import { Dock } from './Dock';
 import { TarjetaTareaActiva } from './TarjetaTareaActiva';
 import { FranjaPendientes } from './FranjaPendientes';
 import { ContenedorVentanas } from '../window/ContenedorVentanas';
+import { DialogoRechazoApp } from './DialogoRechazoApp';
 import { FACTOR_VELOCIDAD_DEMO } from '../../config/tiempo';
-import { puedeAbrirApp, cupoDeTareas } from '../../kernel/users/decisiones';
+
 
 type PantallaEscritorioProps = {
   onCambiarUsuario?: () => void;
@@ -44,7 +46,15 @@ export function PantallaEscritorio({
     avanzar,
   } = useTareas();
 
-  const { ventanas, focusPid, abrir, restaurar, enfocar } = useVentanas();
+  const {
+    ventanas,
+    focusPid,
+    abrir,
+    restaurar,
+    enfocar,
+    ultimoRechazoApertura,
+    registrarRechazoApertura,
+  } = useVentanas();
   const { procesos, lanzar, cambiarEstado } = useProcesos();
   const usuario = useSesion((s) => s.usuario);
   const {
@@ -101,50 +111,34 @@ export function PantallaEscritorio({
     if (ventanaExistente) {
       if (ventanaExistente.estado === 'minimizada') {
         restaurar(ventanaExistente.id);
-        cambiarEstado(ventanaExistente.pid, 'En ejecución');
       } else {
         enfocar(ventanaExistente.id);
-        cambiarEstado(ventanaExistente.pid, 'En ejecución');
       }
       return;
     }
 
-    // Comprobación de límites por perfil antes de crear el proceso
+    // Comprobación de límites por perfil en el kernel antes de abrir
     const decision = puedeAbrirApp(usuario, idApp, procesos);
     if (!decision.ok) {
-      useVentanas.getState().registrarRechazoApertura({ idApp, motivo: decision.motivo });
-      const nombreApp = APPS[idApp]?.nombre ?? idApp;
-      const motivoTexto =
-        decision.motivo === 'app-deshabilitada'
-          ? 'aplicación no habilitada para este perfil'
-          : 'memoria asignada insuficiente';
-
+      registrarRechazoApertura({ idApp, motivo: decision.motivo });
       registrar({
-        categoria: 'proceso',
+        categoria: 'seguridad',
         gravedad: 'aviso',
-        mensaje: `Apertura rechazada de ${nombreApp}: ${motivoTexto}`,
-        usuarioId: usuario?.id,
+        mensaje: `Apertura rechazada de ${APPS[idApp]?.nombre ?? idApp}: ${decision.motivo}`,
+        usuarioId,
       });
-
-      setAvisoMemoria(
-        decision.motivo === 'app-deshabilitada'
-          ? `No tienes permisos para abrir ${nombreApp}.`
-          : 'No hay memoria disponible para tu perfil de usuario.'
-      );
       return;
     }
 
     const proceso = lanzar(idApp, usuarioId);
 
     if (!proceso) {
-      setAvisoMemoria(
-        'No hay memoria disponible. Cierra una app para abrir otra.'
-      );
+      registrarRechazoApertura({ idApp, motivo: 'memoria-insuficiente' });
       return;
     }
 
     abrir(idApp, proceso.pid, usuarioId);
-    cambiarEstado(proceso.pid, 'En ejecución');
+    cambiarEstado(proceso.pid, 'Listo');
   };
 
   const manejarBloquear = () => {
@@ -219,6 +213,10 @@ export function PantallaEscritorio({
             <ContenedorVentanas />
           </main>
         </div>
+        <DialogoRechazoApp
+          rechazo={ultimoRechazoApertura}
+          onCerrar={() => registrarRechazoApertura(null)}
+        />
       </div>
     );
   }
@@ -253,6 +251,10 @@ export function PantallaEscritorio({
             No tienes tareas pendientes
           </p>
         </main>
+        <DialogoRechazoApp
+          rechazo={ultimoRechazoApertura}
+          onCerrar={() => registrarRechazoApertura(null)}
+        />
       </div>
     );
   }
@@ -330,6 +332,11 @@ export function PantallaEscritorio({
           <ContenedorVentanas />
         </main>
       </div>
+
+      <DialogoRechazoApp
+        rechazo={ultimoRechazoApertura}
+        onCerrar={() => registrarRechazoApertura(null)}
+      />
     </div>
   );
 }

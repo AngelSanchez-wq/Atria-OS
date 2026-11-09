@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { LimitesUsuario, RolUsuario, Usuario } from '../kernel/types';
 import { USUARIOS_SEMILLA } from '../kernel/users/usuarios-semilla';
+import { TODAS_LAS_APPS } from '../kernel/users/constantes';
 import {
   crearUsuario as opCrearUsuario,
   bloquearUsuario as opBloquearUsuario,
@@ -28,7 +29,7 @@ const usuariosIniciales: Usuario[] = Array.isArray(usuariosPersistidos) && usuar
       estado: u.estado ?? 'activo',
       ultimoAcceso: u.ultimoAcceso ?? null,
       limites: u.limites ?? {
-        appsHabilitadas: ['focuspad', 'timelapse', 'tagfs', 'burble', 'ambient', 'monitor', 'configuracion'],
+        appsHabilitadas: [...TODAS_LAS_APPS],
         maxTareasActivas: 3,
         memoriaMaximaMb: 1024,
       },
@@ -54,113 +55,112 @@ export const useUsuariosStore = create<UsuariosStore>((set, get) => ({
   usuarios: usuariosIniciales,
 
   crearUsuario: (actor, datos) => {
-    const res = opCrearUsuario(actor, get().usuarios, datos);
-    if (!res.ok) {
-      return res;
+    const { usuarios } = get();
+    const resultado = opCrearUsuario(actor, usuarios, datos);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'info',
+        mensaje: `Usuario creado: ${resultado.usuario.nombre} (${resultado.usuario.rol}) por ${actor.nombre}`,
+        usuarioId: actor.id,
+      });
     }
 
-    set({ usuarios: res.usuarios });
-    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, res.usuarios);
-
-    // Auditoría de seguridad (sin registrar nunca el PIN)
-    registrar({
-      categoria: 'seguridad',
-      gravedad: 'info',
-      mensaje: `Usuario creado: ${res.usuario.nombre} (rol: ${res.usuario.rol})`,
-      usuarioId: actor.id,
-    });
-
-    return res;
+    return resultado;
   },
 
   bloquearUsuario: (actor, usuarioId) => {
-    const res = opBloquearUsuario(actor, get().usuarios, usuarioId);
-    if (!res.ok) {
-      return res;
+    const { usuarios } = get();
+    const resultado = opBloquearUsuario(actor, usuarios, usuarioId);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'aviso',
+        mensaje: `Usuario bloqueado: ${resultado.usuario.nombre} por ${actor.nombre}`,
+        usuarioId: actor.id,
+      });
     }
 
-    set({ usuarios: res.usuarios });
-    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, res.usuarios);
-
-    registrar({
-      categoria: 'seguridad',
-      gravedad: 'aviso',
-      mensaje: `Usuario bloqueado: ${res.usuario.nombre}`,
-      usuarioId: actor.id,
-    });
-
-    return res;
+    return resultado;
   },
 
   desbloquearUsuario: (actor, usuarioId) => {
-    const res = opDesbloquearUsuario(actor, get().usuarios, usuarioId);
-    if (!res.ok) {
-      return res;
+    const { usuarios } = get();
+    const resultado = opDesbloquearUsuario(actor, usuarios, usuarioId);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'info',
+        mensaje: `Usuario desbloqueado: ${resultado.usuario.nombre} por ${actor.nombre}`,
+        usuarioId: actor.id,
+      });
     }
 
-    set({ usuarios: res.usuarios });
-    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, res.usuarios);
-
-    registrar({
-      categoria: 'seguridad',
-      gravedad: 'info',
-      mensaje: `Usuario desbloqueado: ${res.usuario.nombre}`,
-      usuarioId: actor.id,
-    });
-
-    return res;
+    return resultado;
   },
 
   cambiarRol: (actor, usuarioId, nuevoRol) => {
-    const res = opCambiarRol(actor, get().usuarios, usuarioId, nuevoRol);
-    if (!res.ok) {
-      return res;
+    const { usuarios } = get();
+    const resultado = opCambiarRol(actor, usuarios, usuarioId, nuevoRol);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'aviso',
+        mensaje: `Rol cambiado a ${nuevoRol} para ${resultado.usuario.nombre} por ${actor.nombre}`,
+        usuarioId: actor.id,
+      });
     }
 
-    set({ usuarios: res.usuarios });
-    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, res.usuarios);
-
-    registrar({
-      categoria: 'seguridad',
-      gravedad: 'info',
-      mensaje: `Rol de ${res.usuario.nombre} cambiado a ${nuevoRol}`,
-      usuarioId: actor.id,
-    });
-
-    return res;
+    return resultado;
   },
 
   actualizarLimites: (actor, usuarioId, nuevosLimites) => {
-    const res = opActualizarLimites(actor, get().usuarios, usuarioId, nuevosLimites);
-    if (!res.ok) {
-      return res;
+    const { usuarios } = get();
+    const resultado = opActualizarLimites(actor, usuarios, usuarioId, nuevosLimites);
+
+    if (resultado.ok) {
+      set({ usuarios: resultado.usuarios });
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, resultado.usuarios);
+
+      registrar({
+        categoria: 'seguridad',
+        gravedad: 'info',
+        mensaje: `Límites actualizados para ${resultado.usuario.nombre} por ${actor.nombre}`,
+        usuarioId: actor.id,
+      });
     }
 
-    set({ usuarios: res.usuarios });
-    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, res.usuarios);
-
-    registrar({
-      categoria: 'seguridad',
-      gravedad: 'info',
-      mensaje: `Límites actualizados para ${res.usuario.nombre}`,
-      usuarioId: actor.id,
-    });
-
-    return res;
+    return resultado;
   },
 
   actualizarUltimoAcceso: (usuarioId, instante = Date.now()) => {
     set((state) => {
-      const listaActualizada = state.usuarios.map((u) =>
+      const actualizados = state.usuarios.map((u) =>
         u.id === usuarioId ? { ...u, ultimoAcceso: instante } : u
       );
-      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, listaActualizada);
-      return { usuarios: listaActualizada };
+      platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, actualizados);
+      return { usuarios: actualizados };
     });
   },
 
   restablecer: () => {
-    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, USUARIOS_SEMILLA);
     set({ usuarios: USUARIOS_SEMILLA });
+    platform.saveState(CLAVE_PERSISTENCIA_USUARIOS, USUARIOS_SEMILLA);
   },
 }));

@@ -80,28 +80,25 @@ export function crearUsuario(
   }
 
   if (datos.limites && !validarLimites(datos.limites)) {
-    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.LIMITES_FUERA_DE_RANGO };
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.LIMITES_INVALIDOS };
   }
 
-  const idGenerado = nombreLimpio
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, '-');
+  const idGenerado = `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const inicial = nombreLimpio.charAt(0).toUpperCase();
 
   const nuevoUsuario: Usuario = {
-    id: idGenerado || `usr-${Date.now()}`,
+    id: idGenerado,
     nombre: nombreLimpio,
-    inicial: nombreLimpio.charAt(0).toUpperCase() || 'U',
+    inicial,
     rol: datos.rol,
-    pin: datos.pin,
+    pin: datos.pin, // TODO: Guardar hash con sal en lugar de texto plano
     estado: 'activo',
     ultimoAcceso: null,
     limites: {
       ...LIMITES_USUARIO_POR_DEFECTO,
       ...(datos.limites ?? {}),
     },
-    ...(datos.foto ? { foto: datos.foto } : {}),
+    foto: datos.foto,
   };
 
   return {
@@ -113,33 +110,39 @@ export function crearUsuario(
 
 /**
  * Bloquea la cuenta de un usuario.
- * Nadie puede bloquearse a sí mismo ni se puede bloquear al último administrador activo.
+ * Reglas de seguridad:
+ * - El actor debe ser administrador activo.
+ * - Nadie puede bloquearse a sí mismo.
+ * - No se puede bloquear al último administrador activo del sistema.
+ * - Nota de diseño: Si el administrador bloquea a un usuario que tiene actualmente una sesión
+ *   activa, la acción NO lo expulsa inmediatamente; solo surte efecto e impide el acceso
+ *   en su próximo inicio de sesión.
  */
 export function bloquearUsuario(
   actor: Usuario,
   usuarios: readonly Usuario[],
-  usuarioId: string
+  usuarioIdABloquear: string
 ): ResultadoOperacionUsuario {
   if (!esActorAdminActivo(actor)) {
     return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ACTOR_NO_ADMIN };
   }
 
-  if (actor.id === usuarioId) {
+  if (actor.id === usuarioIdABloquear) {
     return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.AUTO_BLOQUEO_NO_PERMITIDO };
   }
 
-  const objetivo = usuarios.find((u) => u.id === usuarioId);
+  const objetivo = usuarios.find((u) => u.id === usuarioIdABloquear);
   if (!objetivo) {
-    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_ENCONTRADO };
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_EXISTE };
   }
 
-  // Comprobar si es el último administrador activo
+  // Comprobar si es el último admin activo
   if (objetivo.rol === 'admin' && objetivo.estado === 'activo') {
     const otrosAdminsActivos = usuarios.filter(
-      (u) => u.id !== usuarioId && u.rol === 'admin' && u.estado === 'activo'
+      (u) => u.id !== objetivo.id && u.rol === 'admin' && u.estado === 'activo'
     );
     if (otrosAdminsActivos.length === 0) {
-      return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMINISTRADOR };
+      return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMIN_ACTIVO };
     }
   }
 
@@ -148,32 +151,29 @@ export function bloquearUsuario(
     estado: 'bloqueado',
   };
 
-  const listaActualizada = usuarios.map((u) =>
-    u.id === usuarioId ? usuarioActualizado : u
-  );
-
   return {
     ok: true,
     usuario: usuarioActualizado,
-    usuarios: listaActualizada,
+    usuarios: usuarios.map((u) => (u.id === usuarioActualizado.id ? usuarioActualizado : u)),
   };
 }
 
 /**
  * Desbloquea la cuenta de un usuario previamente bloqueado.
+ * El actor debe ser administrador activo.
  */
 export function desbloquearUsuario(
   actor: Usuario,
   usuarios: readonly Usuario[],
-  usuarioId: string
+  usuarioIdADesbloquear: string
 ): ResultadoOperacionUsuario {
   if (!esActorAdminActivo(actor)) {
     return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ACTOR_NO_ADMIN };
   }
 
-  const objetivo = usuarios.find((u) => u.id === usuarioId);
+  const objetivo = usuarios.find((u) => u.id === usuarioIdADesbloquear);
   if (!objetivo) {
-    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_ENCONTRADO };
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_EXISTE };
   }
 
   const usuarioActualizado: Usuario = {
@@ -181,20 +181,18 @@ export function desbloquearUsuario(
     estado: 'activo',
   };
 
-  const listaActualizada = usuarios.map((u) =>
-    u.id === usuarioId ? usuarioActualizado : u
-  );
-
   return {
     ok: true,
     usuario: usuarioActualizado,
-    usuarios: listaActualizada,
+    usuarios: usuarios.map((u) => (u.id === usuarioActualizado.id ? usuarioActualizado : u)),
   };
 }
 
 /**
- * Cambia el rol de un usuario ('estandar' | 'admin').
- * No permite degradar al último administrador activo.
+ * Cambia el rol de un usuario (de 'estandar' a 'admin' o viceversa).
+ * Reglas de seguridad:
+ * - El actor debe ser administrador activo.
+ * - No se puede degradar al último administrador activo del sistema.
  */
 export function cambiarRol(
   actor: Usuario,
@@ -208,16 +206,20 @@ export function cambiarRol(
 
   const objetivo = usuarios.find((u) => u.id === usuarioId);
   if (!objetivo) {
-    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_ENCONTRADO };
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_EXISTE };
   }
 
-  // Comprobar si se degrada al último administrador activo
-  if (objetivo.rol === 'admin' && nuevoRol !== 'admin' && objetivo.estado === 'activo') {
+  if (objetivo.rol === nuevoRol) {
+    return { ok: true, usuario: objetivo, usuarios: [...usuarios] };
+  }
+
+  // Si se degrada de admin a estandar, validar que no sea el último admin activo
+  if (objetivo.rol === 'admin' && nuevoRol === 'estandar') {
     const otrosAdminsActivos = usuarios.filter(
-      (u) => u.id !== usuarioId && u.rol === 'admin' && u.estado === 'activo'
+      (u) => u.id !== objetivo.id && u.rol === 'admin' && u.estado === 'activo'
     );
     if (otrosAdminsActivos.length === 0) {
-      return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMINISTRADOR };
+      return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMIN_ACTIVO };
     }
   }
 
@@ -226,19 +228,16 @@ export function cambiarRol(
     rol: nuevoRol,
   };
 
-  const listaActualizada = usuarios.map((u) =>
-    u.id === usuarioId ? usuarioActualizado : u
-  );
-
   return {
     ok: true,
     usuario: usuarioActualizado,
-    usuarios: listaActualizada,
+    usuarios: usuarios.map((u) => (u.id === usuarioActualizado.id ? usuarioActualizado : u)),
   };
 }
 
 /**
- * Actualiza los límites asignados a un usuario tras validar los rangos permitidos.
+ * Actualiza los límites (apps habilitadas, tareas y memoria) de un usuario.
+ * El actor debe ser administrador activo y los valores deben estar en el rango válido.
  */
 export function actualizarLimites(
   actor: Usuario,
@@ -252,11 +251,11 @@ export function actualizarLimites(
 
   const objetivo = usuarios.find((u) => u.id === usuarioId);
   if (!objetivo) {
-    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_ENCONTRADO };
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.USUARIO_NO_EXISTE };
   }
 
   if (!validarLimites(nuevosLimites)) {
-    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.LIMITES_FUERA_DE_RANGO };
+    return { ok: false, motivo: MOTIVOS_ERROR_USUARIOS.LIMITES_INVALIDOS };
   }
 
   const usuarioActualizado: Usuario = {
@@ -267,13 +266,9 @@ export function actualizarLimites(
     },
   };
 
-  const listaActualizada = usuarios.map((u) =>
-    u.id === usuarioId ? usuarioActualizado : u
-  );
-
   return {
     ok: true,
     usuario: usuarioActualizado,
-    usuarios: listaActualizada,
+    usuarios: usuarios.map((u) => (u.id === usuarioActualizado.id ? usuarioActualizado : u)),
   };
 }

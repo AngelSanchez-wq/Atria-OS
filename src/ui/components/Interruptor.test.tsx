@@ -3,61 +3,50 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Interruptor } from './Interruptor';
 
 describe('Interruptor', () => {
-  it('renderiza con role switch y aria-checked correspondiente', () => {
-    const { rerender } = render(
-      <Interruptor activo={false} onAlternar={vi.fn()} etiqueta="Modo prueba" />
-    );
+  it('se renderiza con role="switch" y refleja aria-checked', () => {
+    const onAlternar = vi.fn();
+    render(<Interruptor activo={true} onAlternar={onAlternar} ariaLabel="Habilitar app" />);
 
-    const elSwitch = screen.getByRole('switch', { name: 'Modo prueba' });
-    expect(elSwitch).toBeInTheDocument();
-    expect(elSwitch).toHaveAttribute('aria-checked', 'false');
-
-    rerender(
-      <Interruptor activo={true} onAlternar={vi.fn()} etiqueta="Modo prueba" />
-    );
-    expect(elSwitch).toHaveAttribute('aria-checked', 'true');
+    const sw = screen.getByRole('switch', { name: 'Habilitar app' });
+    expect(sw).toBeInTheDocument();
+    expect(sw).toHaveAttribute('aria-checked', 'true');
   });
 
   it('llama a onAlternar al hacer clic', () => {
     const onAlternar = vi.fn();
-    render(
-      <Interruptor activo={false} onAlternar={onAlternar} etiqueta="Prueba" />
-    );
+    render(<Interruptor activo={false} onAlternar={onAlternar} ariaLabel="Habilitar" />);
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Prueba' }));
-    expect(onAlternar).toHaveBeenCalledTimes(1);
+    const sw = screen.getByRole('switch', { name: 'Habilitar' });
+    fireEvent.click(sw);
+    expect(onAlternar).toHaveBeenCalledWith(true);
   });
 
-  it('permite alternar con las teclas Espacio y Enter', () => {
+  it('permite alternar mediante teclado con Espacio y Enter', () => {
     const onAlternar = vi.fn();
-    render(
-      <Interruptor activo={false} onAlternar={onAlternar} etiqueta="Prueba" />
-    );
+    render(<Interruptor activo={true} onAlternar={onAlternar} ariaLabel="Habilitar" />);
 
-    const elSwitch = screen.getByRole('switch', { name: 'Prueba' });
-    fireEvent.keyDown(elSwitch, { key: ' ' });
-    expect(onAlternar).toHaveBeenCalledTimes(1);
+    const sw = screen.getByRole('switch', { name: 'Habilitar' });
+    fireEvent.keyDown(sw, { key: ' ' });
+    expect(onAlternar).toHaveBeenCalledWith(false);
 
-    fireEvent.keyDown(elSwitch, { key: 'Enter' });
-    expect(onAlternar).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(sw, { key: 'Enter' });
+    expect(onAlternar).toHaveBeenCalledWith(false);
   });
 
-  it('no llama a onAlternar cuando está deshabilitado', () => {
+  it('no permite alternar cuando está deshabilitado', () => {
     const onAlternar = vi.fn();
     render(
       <Interruptor
         activo={false}
+        deshabilitado={true}
         onAlternar={onAlternar}
-        disabled={true}
-        etiqueta="Prueba"
+        ariaLabel="Habilitar"
       />
     );
 
-    const elSwitch = screen.getByRole('switch', { name: 'Prueba' });
-    fireEvent.click(elSwitch);
-    expect(onAlternar).not.toHaveBeenCalled();
-
-    fireEvent.keyDown(elSwitch, { key: ' ' });
+    const sw = screen.getByRole('switch', { name: 'Habilitar' });
+    expect(sw).toBeDisabled();
+    fireEvent.click(sw);
     expect(onAlternar).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { KeyboardEvent as EventoTeclado } from 'react';
+import { Lock } from 'lucide-react';
 import type { Usuario } from '../../kernel/types';
 import { verificarPin } from '../../kernel/users/verificarPin';
 import { puedeIniciarSesion } from '../../kernel/users/decisiones';
@@ -31,9 +32,10 @@ export function PantallaLogin({
   const [pin, setPin] = useState('');
   const [intentosRestantes, setIntentosRestantes] = useState(INTENTOS_MAXIMOS);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
-  const [bloqueado, setBloqueado] = useState(false);
+  const [bloqueadoPorIntentos, setBloqueadoPorIntentos] = useState(false);
 
   const usuarioActivo = usuarios.find((u) => u.id === usuarioId) ?? usuarios[0];
+  const cuentaBloqueada = usuarioActivo ? !puedeIniciarSesion(usuarioActivo) : false;
 
   function seleccionarUsuario(usuario: Usuario) {
     setUsuarioId(usuario.id);
@@ -41,15 +43,10 @@ export function PantallaLogin({
     setMensajeError(null);
   }
 
+  // Si el administrador bloquea a un usuario con sesión activa: la acción solo
+  // afecta al próximo inicio de sesión (no se expulsa al usuario de su sesión activa).
   const intentarEntrar = useCallback(() => {
-    if (!usuarioActivo || bloqueado || pin.length !== DIGITOS_PIN) {
-      return;
-    }
-
-    // TODO: En la Entrega 2, reflejar visualmente en la UI que la cuenta está bloqueada por el administrador.
-    if (!puedeIniciarSesion(usuarioActivo)) {
-      setMensajeError('Esta cuenta está bloqueada');
-      setPin('');
+    if (!usuarioActivo || bloqueadoPorIntentos || cuentaBloqueada || pin.length !== DIGITOS_PIN) {
       return;
     }
 
@@ -78,7 +75,7 @@ export function PantallaLogin({
     });
 
     if (siguientes <= 0) {
-      setBloqueado(true);
+      setBloqueadoPorIntentos(true);
       registrar({
         categoria: 'seguridad',
         gravedad: 'aviso',
@@ -90,26 +87,36 @@ export function PantallaLogin({
     }
 
     setMensajeError('PIN incorrecto');
-  }, [actualizarUltimoAcceso, bloqueado, intentosRestantes, onIngresar, pin, usuarioActivo]);
+  }, [
+    actualizarUltimoAcceso,
+    bloqueadoPorIntentos,
+    cuentaBloqueada,
+    intentosRestantes,
+    onIngresar,
+    pin,
+    usuarioActivo,
+  ]);
 
   useEffect(() => {
-    if (!bloqueado) {
+    if (!bloqueadoPorIntentos) {
       return;
     }
 
     const temporizador = window.setTimeout(() => {
-      setBloqueado(false);
+      setBloqueadoPorIntentos(false);
       setIntentosRestantes(INTENTOS_MAXIMOS);
       setMensajeError(null);
       setPin('');
     }, ESPERA_BLOQUEO_MS);
 
     return () => window.clearTimeout(temporizador);
-  }, [bloqueado]);
+  }, [bloqueadoPorIntentos]);
 
   useEffect(() => {
     function alPulsarTecla(evento: KeyboardEvent) {
-      if (bloqueado) {
+      // Si la cuenta está bloqueada por el administrador o bloqueada temporalmente por intentos,
+      // no se permite interactuar con el PIN
+      if (bloqueadoPorIntentos || cuentaBloqueada) {
         return;
       }
 
@@ -135,7 +142,7 @@ export function PantallaLogin({
 
     window.addEventListener('keydown', alPulsarTecla);
     return () => window.removeEventListener('keydown', alPulsarTecla);
-  }, [bloqueado, intentarEntrar, pin]);
+  }, [bloqueadoPorIntentos, cuentaBloqueada, intentarEntrar, pin]);
 
   function alTeclaGrupo(evento: EventoTeclado<HTMLDivElement>) {
     if (!usuarioActivo) {
@@ -162,16 +169,28 @@ export function PantallaLogin({
     return null;
   }
 
-  const puedeEntrar = !bloqueado && pin.length === DIGITOS_PIN;
+  const puedeEntrar =
+    !bloqueadoPorIntentos && !cuentaBloqueada && pin.length === DIGITOS_PIN;
 
   return (
     <main className="flex h-full w-full flex-col items-center justify-center bg-bg px-6">
       <h1 className="font-display text-3xl font-semibold text-ink">¿Quién eres?</h1>
 
+      {cuentaBloqueada && (
+        <div
+          role="status"
+          aria-label="Esta cuenta está bloqueada. Pídele al administrador que la habilite."
+          className="mt-4 flex items-center justify-center gap-2 rounded-full bg-warm px-4 py-1.5 text-xs font-semibold text-warm-ink border border-warm-line shadow-2xs"
+        >
+          <Lock className="h-3.5 w-3.5 stroke-[2.5]" aria-hidden="true" />
+          <span>Esta cuenta está bloqueada. Pídele al administrador que la habilite.</span>
+        </div>
+      )}
+
       <div
         role="radiogroup"
         aria-label="Usuarios"
-        className="mt-10 flex items-start gap-10"
+        className="mt-8 flex items-start gap-10"
         onKeyDown={alTeclaGrupo}
       >
         {usuarios.map((usuario) => (
@@ -181,6 +200,8 @@ export function PantallaLogin({
             inicial={usuario.inicial}
             seleccionado={usuario.id === usuarioActivo.id}
             esAdmin={usuario.rol === 'admin'}
+            bloqueado={usuario.estado === 'bloqueado'}
+            foto={usuario.foto}
             tabIndex={usuario.id === usuarioActivo.id ? 0 : -1}
             onSeleccionar={() => seleccionarUsuario(usuario)}
           />
@@ -204,10 +225,10 @@ export function PantallaLogin({
       ) : null}
 
       <p className="mt-6 text-sm text-muted">
-        {bloqueado
+        {bloqueadoPorIntentos
           ? null
           : `Quedan ${intentosRestantes} intento${intentosRestantes === 1 ? '' : 's'}`}
-        {!bloqueado ? (
+        {!bloqueadoPorIntentos ? (
           <span className="mx-2 text-line" aria-hidden="true">
             ·
           </span>

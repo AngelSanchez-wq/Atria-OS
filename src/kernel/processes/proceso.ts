@@ -1,5 +1,6 @@
 import { AppId, EstadoProceso, PCB, TipoApp } from '../types';
 import { CONFIG_PROCESO, MEMORIA_TOTAL_MB } from './constantes';
+import { QUANTUM_BASE_TICKS } from '../../config/planificador';
 
 // ─── Contador de PIDs ────────────────────────────────────────────────────────
 // Función pura que recibe el PID más alto actual para calcular el siguiente,
@@ -51,6 +52,10 @@ export function crearProceso(opts: OpcionesCrearProceso): ResultadoCrear {
     nombre: appId,
     estado: 'Nuevo',
     prioridad: config.prioridad,
+    prioridadEfectiva: config.prioridad,
+    ticksEsperando: 0,
+    quantumRestante: QUANTUM_BASE_TICKS,
+    ticksEnCpu: 0,
     memoriaMb: config.memoriaMb,
     usuarioId,
     creadoEn: ahora,

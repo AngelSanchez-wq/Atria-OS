@@ -21,7 +21,8 @@ export function puedeAbrirApp(
   idApp: AppId,
   procesos: readonly PCB[]
 ): ResultadoDecisionApertura {
-  if (usuario) {
+  // La app de configuración del sistema es una utilidad accesible para todos los perfiles
+  if (usuario && idApp !== 'configuracion') {
     if (!usuario.limites.appsHabilitadas.includes(idApp)) {
       return { ok: false, motivo: MOTIVOS_RECHAZO_APP.APP_DESHABILITADA };
     }
@@ -61,20 +62,16 @@ export function puedeAbrirApp(
   return { ok: true };
 }
 
-/**
- * Retorna el cupo máximo de tareas activas permitidas para el usuario de la sesión.
- */
+/** Retorna el cupo máximo de tareas activas para el perfil del usuario. */
 export function cupoDeTareas(usuario: Usuario | null): number {
-  if (!usuario) {
-    return CUPO_TAREAS_POR_DEFECTO;
-  }
+  if (!usuario) return CUPO_TAREAS_POR_DEFECTO;
   return usuario.limites.maxTareasActivas ?? CUPO_TAREAS_POR_DEFECTO;
 }
 
 /**
- * Determina si el usuario puede iniciar sesión en el sistema.
- * Retorna false si la cuenta está bloqueada por el administrador.
+ * Determina si el usuario puede iniciar sesión.
+ * Falso si su cuenta ha sido bloqueada por el administrador.
  */
 export function puedeIniciarSesion(usuario: Usuario): boolean {
-  return usuario.estado === 'activo';
+  return usuario.estado !== 'bloqueado';
 }

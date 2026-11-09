@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ESPERA_BLOQUEO_MS } from '../../config/login';
 import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 import { useRegistroStore } from '../../store/registro';
@@ -26,10 +27,10 @@ describe('PantallaLogin', () => {
     escribirPin('12');
     expect(screen.getByRole('status', { name: '2 de 4 dígitos' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Mateo' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Admin' }));
 
     expect(screen.getByRole('status', { name: '0 de 4 dígitos' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Mateo' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: 'Admin' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
@@ -49,28 +50,28 @@ describe('PantallaLogin', () => {
     expect(eventos).toHaveLength(1);
     expect(eventos[0].categoria).toBe('seguridad');
     expect(eventos[0].gravedad).toBe('aviso');
-    expect(eventos[0].mensaje).toContain('PIN incorrecto para Mia (2 intentos restantes)');
+    expect(eventos[0].mensaje).toContain('PIN incorrecto para Valery (2 intentos restantes)');
     expect(eventos[0].mensaje).not.toContain('9999');
   });
 
   it('con PIN correcto llama a onIngresar con el usuario y registra evento de sesión sin PIN', () => {
     const onIngresar = vi.fn();
-    const mia = USUARIOS_SEMILLA[0];
+    const valery = USUARIOS_SEMILLA[0];
 
     render(<PantallaLogin onIngresar={onIngresar} />);
 
-    escribirPin(mia.pin);
+    escribirPin(valery.pin);
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     expect(onIngresar).toHaveBeenCalledTimes(1);
-    expect(onIngresar).toHaveBeenCalledWith(mia);
+    expect(onIngresar).toHaveBeenCalledWith(valery);
 
     const eventos = useRegistroStore.getState().eventos;
     expect(eventos).toHaveLength(1);
     expect(eventos[0].categoria).toBe('sesion');
     expect(eventos[0].gravedad).toBe('info');
-    expect(eventos[0].mensaje).toContain('Inicio de sesión correcto de Mia');
-    expect(eventos[0].mensaje).not.toContain(mia.pin);
+    expect(eventos[0].mensaje).toContain('Inicio de sesión correcto de Valery');
+    expect(eventos[0].mensaje).not.toContain(valery.pin);
   });
 
   it('al agotar intentos deshabilita el botón, restaura tras la espera y registra aviso de bloqueo sin PIN', async () => {
@@ -105,24 +106,33 @@ describe('PantallaLogin', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('una cuenta bloqueada no puede iniciar sesión aunque el PIN sea correcto', () => {
+  it('con cuenta bloqueada no permite escribir PIN, muestra aviso status y botón deshabilitado', () => {
     const onIngresar = vi.fn();
-    const usuarioBloqueado = {
-      ...USUARIOS_SEMILLA[0],
-      estado: 'bloqueado' as const,
-    };
+    render(<PantallaLogin onIngresar={onIngresar} />);
 
-    render(
-      <PantallaLogin
-        onIngresar={onIngresar}
-        usuarios={[usuarioBloqueado]}
-      />
+    // Mateo está bloqueado por defecto en USUARIOS_SEMILLA
+    const btnMateo = screen.getByRole('radio', { name: 'Mateo' });
+    fireEvent.click(btnMateo);
+
+    // Muestra aviso de cuenta bloqueada con role="status"
+    const avisoBloqueo = screen.getByRole('status', {
+      name: /Esta cuenta está bloqueada/i,
+    });
+    expect(avisoBloqueo).toBeInTheDocument();
+    expect(avisoBloqueo).toHaveTextContent(
+      'Esta cuenta está bloqueada. Pídele al administrador que la habilite.'
     );
 
-    escribirPin(usuarioBloqueado.pin);
-    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    // Intenta escribir PIN
+    escribirPin('5678');
+    // Indicador sigue en 0 de 4 dígitos
+    expect(screen.getByRole('status', { name: '0 de 4 dígitos' })).toBeInTheDocument();
 
+    // Botón Entrar deshabilitado
+    const btnEntrar = screen.getByRole('button', { name: 'Entrar' });
+    expect(btnEntrar).toBeDisabled();
+
+    fireEvent.click(btnEntrar);
     expect(onIngresar).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('Esta cuenta está bloqueada');
   });
 });

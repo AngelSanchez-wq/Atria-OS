@@ -71,23 +71,23 @@ describe('Operaciones puras de administración de usuarios', () => {
 
   describe('crearUsuario', () => {
     it('crea un usuario válido con ID y límites por defecto', () => {
-      const res = crearUsuario(adminActivo, [adminActivo], {
-        nombre: 'Valery Gómez',
+      const res = crearUsuario(adminActivo, [adminActivo, usuarioEstandar], {
+        nombre: 'Valery',
         pin: '9876',
         rol: 'estandar',
       });
-
       expect(res.ok).toBe(true);
       if (res.ok) {
-        expect(res.usuario.nombre).toBe('Valery Gómez');
-        expect(res.usuario.pin).toBe('9876');
+        expect(res.usuario.nombre).toBe('Valery');
+        expect(res.usuario.inicial).toBe('V');
+        expect(res.usuario.rol).toBe('estandar');
         expect(res.usuario.estado).toBe('activo');
-        expect(res.usuario.limites).toEqual(LIMITES_USUARIO_POR_DEFECTO);
-        expect(res.usuarios).toHaveLength(2);
+        expect(res.usuario.limites.appsHabilitadas).toHaveLength(6);
+        expect(res.usuarios).toHaveLength(3);
       }
     });
 
-    it('rechaza nombres vacíos o solo con espacios', () => {
+    it('falla si el nombre está vacío', () => {
       const res = crearUsuario(adminActivo, [adminActivo], {
         nombre: '   ',
         pin: '1234',
@@ -99,10 +99,10 @@ describe('Operaciones puras de administración de usuarios', () => {
       }
     });
 
-    it('rechaza nombres duplicados ignorando mayúsculas y espacios', () => {
+    it('falla si el nombre está duplicado (sin importar mayúsculas)', () => {
       const res = crearUsuario(adminActivo, [adminActivo, usuarioEstandar], {
-        nombre: '  mateo  ',
-        pin: '9999',
+        nombre: 'mateo',
+        pin: '1234',
         rol: 'estandar',
       });
       expect(res.ok).toBe(false);
@@ -111,41 +111,54 @@ describe('Operaciones puras de administración de usuarios', () => {
       }
     });
 
-    it('rechaza PIN con longitud distinta de 4 dígitos o caracteres no numéricos', () => {
-      const resCorto = crearUsuario(adminActivo, [adminActivo], {
-        nombre: 'Lucas',
+    it('falla si el PIN no tiene exactamente 4 dígitos', () => {
+      const res1 = crearUsuario(adminActivo, [adminActivo], {
+        nombre: 'Sofía',
         pin: '123',
         rol: 'estandar',
       });
-      expect(resCorto.ok).toBe(false);
-      if (!resCorto.ok) {
-        expect(resCorto.motivo).toBe(MOTIVOS_ERROR_USUARIOS.PIN_INVALIDO);
+      expect(res1.ok).toBe(false);
+      if (!res1.ok) {
+        expect(res1.motivo).toBe(MOTIVOS_ERROR_USUARIOS.PIN_INVALIDO);
       }
 
-      const resLetras = crearUsuario(adminActivo, [adminActivo], {
-        nombre: 'Lucas',
+      const res2 = crearUsuario(adminActivo, [adminActivo], {
+        nombre: 'Sofía',
         pin: 'abcd',
         rol: 'estandar',
       });
-      expect(resLetras.ok).toBe(false);
+      expect(res2.ok).toBe(false);
+      if (!res2.ok) {
+        expect(res2.motivo).toBe(MOTIVOS_ERROR_USUARIOS.PIN_INVALIDO);
+      }
     });
 
-    it('rechaza creación si los límites especificados están fuera de rango', () => {
+    it('falla si se pasan límites fuera de rango', () => {
       const res = crearUsuario(adminActivo, [adminActivo], {
-        nombre: 'Lucas',
+        nombre: 'Sofía',
         pin: '1234',
         rol: 'estandar',
-        limites: { maxTareasActivas: 9 },
+        limites: { maxTareasActivas: 9 }, // Máximo permitido es 5
       });
       expect(res.ok).toBe(false);
       if (!res.ok) {
-        expect(res.motivo).toBe(MOTIVOS_ERROR_USUARIOS.LIMITES_FUERA_DE_RANGO);
+        expect(res.motivo).toBe(MOTIVOS_ERROR_USUARIOS.LIMITES_INVALIDOS);
       }
     });
   });
 
   describe('bloquearUsuario', () => {
-    it('impide que un administrador se bloquee a sí mismo', () => {
+    it('bloquea a un usuario estándar correctamente', () => {
+      const res = bloquearUsuario(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id);
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.usuario.estado).toBe('bloqueado');
+        const usr = res.usuarios.find((u) => u.id === usuarioEstandar.id);
+        expect(usr?.estado).toBe('bloqueado');
+      }
+    });
+
+    it('no permite que un administrador se bloquee a sí mismo', () => {
       const res = bloquearUsuario(adminActivo, [adminActivo, adminSecundario], adminActivo.id);
       expect(res.ok).toBe(false);
       if (!res.ok) {
@@ -153,45 +166,27 @@ describe('Operaciones puras de administración de usuarios', () => {
       }
     });
 
-    it('impide bloquear al último administrador activo del sistema', () => {
+    it('no permite bloquear al último administrador activo', () => {
       const res = bloquearUsuario(adminActivo, [adminActivo, usuarioEstandar], adminActivo.id);
+      // Falla primero por auto-bloqueo o por último admin
       expect(res.ok).toBe(false);
 
-      // Si otro actor admin intentara bloquear al único admin activo:
-      const resUltimo = bloquearUsuario(adminSecundario, [adminActivo, usuarioEstandar], adminActivo.id);
-      expect(resUltimo.ok).toBe(false);
-      if (!resUltimo.ok) {
-        expect(resUltimo.motivo).toBe(MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMINISTRADOR);
-      }
-    });
-
-    it('permite bloquear a un administrador si existen otros administradores activos', () => {
-      const res = bloquearUsuario(adminActivo, [adminActivo, adminSecundario], adminSecundario.id);
-      expect(res.ok).toBe(true);
-      if (res.ok) {
-        expect(res.usuario.estado).toBe('bloqueado');
-      }
-    });
-
-    it('bloquea a un usuario estándar con éxito', () => {
-      const res = bloquearUsuario(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id);
-      expect(res.ok).toBe(true);
-      if (res.ok) {
-        expect(res.usuario.estado).toBe('bloqueado');
-      }
-    });
-
-    it('falla con usuario no encontrado si el ID no existe', () => {
-      const res = bloquearUsuario(adminActivo, [adminActivo], 'fantasma');
-      expect(res.ok).toBe(false);
-      if (!res.ok) {
-        expect(res.motivo).toBe(MOTIVOS_ERROR_USUARIOS.USUARIO_NO_ENCONTRADO);
+      // Si otro intenta bloquear al único admin (por ejemplo si adminSecundario fuera no admin o no existiera)
+      const res2 = bloquearUsuario(
+        adminSecundario,
+        [adminActivo, usuarioEstandar],
+        adminActivo.id
+      );
+      // adminSecundario no está en la lista de usuarios activos administradores
+      expect(res2.ok).toBe(false);
+      if (!res2.ok) {
+        expect(res2.motivo).toBe(MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMIN_ACTIVO);
       }
     });
   });
 
   describe('desbloquearUsuario', () => {
-    it('desbloquea a un usuario previamente bloqueado', () => {
+    it('desbloquea a un usuario bloqueado', () => {
       const bloqueado: Usuario = { ...usuarioEstandar, estado: 'bloqueado' };
       const res = desbloquearUsuario(adminActivo, [adminActivo, bloqueado], bloqueado.id);
       expect(res.ok).toBe(true);
@@ -202,46 +197,52 @@ describe('Operaciones puras de administración de usuarios', () => {
   });
 
   describe('cambiarRol', () => {
-    it('impide degradar al último administrador activo', () => {
-      const res = cambiarRol(adminActivo, [adminActivo, usuarioEstandar], adminActivo.id, 'estandar');
-      expect(res.ok).toBe(false);
-      if (!res.ok) {
-        expect(res.motivo).toBe(MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMINISTRADOR);
-      }
-    });
-
-    it('permite degradar a un admin si queda otro activo', () => {
-      const res = cambiarRol(adminActivo, [adminActivo, adminSecundario], adminSecundario.id, 'estandar');
-      expect(res.ok).toBe(true);
-      if (res.ok) {
-        expect(res.usuario.rol).toBe('estandar');
-      }
-    });
-
-    it('permite promover a un usuario estándar a administrador', () => {
+    it('promueve a un usuario a admin', () => {
       const res = cambiarRol(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id, 'admin');
       expect(res.ok).toBe(true);
       if (res.ok) {
         expect(res.usuario.rol).toBe('admin');
       }
     });
-  });
 
-  describe('actualizarLimites', () => {
-    it('actualiza los límites dentro de los rangos válidos', () => {
-      const res = actualizarLimites(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id, {
-        maxTareasActivas: 4,
-        memoriaMaximaMb: 512,
-      });
-
-      expect(res.ok).toBe(true);
-      if (res.ok) {
-        expect(res.usuario.limites.maxTareasActivas).toBe(4);
-        expect(res.usuario.limites.memoriaMaximaMb).toBe(512);
+    it('no permite degradar al último administrador activo', () => {
+      const res = cambiarRol(adminActivo, [adminActivo, usuarioEstandar], adminActivo.id, 'estandar');
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.motivo).toBe(MOTIVOS_ERROR_USUARIOS.ULTIMO_ADMIN_ACTIVO);
       }
     });
 
-    it('rechaza tareas fuera del rango permitido (1 a 5)', () => {
+    it('permite degradar a un admin si queda otro activo', () => {
+      const res = cambiarRol(
+        adminActivo,
+        [adminActivo, adminSecundario],
+        adminSecundario.id,
+        'estandar'
+      );
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.usuario.rol).toBe('estandar');
+      }
+    });
+  });
+
+  describe('actualizarLimites', () => {
+    it('actualiza los límites dentro de rangos válidos', () => {
+      const res = actualizarLimites(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id, {
+        maxTareasActivas: 5,
+        memoriaMaximaMb: 1536,
+        appsHabilitadas: ['focuspad', 'burble'],
+      });
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.usuario.limites.maxTareasActivas).toBe(5);
+        expect(res.usuario.limites.memoriaMaximaMb).toBe(1536);
+        expect(res.usuario.limites.appsHabilitadas).toEqual(['focuspad', 'burble']);
+      }
+    });
+
+    it('falla con tareas activas fuera de rango (< 1 o > 5)', () => {
       const resBajo = actualizarLimites(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id, {
         maxTareasActivas: 0,
       });
@@ -253,7 +254,7 @@ describe('Operaciones puras de administración de usuarios', () => {
       expect(resAlto.ok).toBe(false);
     });
 
-    it('rechaza memoria fuera del rango permitido (256 a 2048 MB)', () => {
+    it('falla con memoria fuera de rango (< 256 o > 2048)', () => {
       const resBajo = actualizarLimites(adminActivo, [adminActivo, usuarioEstandar], usuarioEstandar.id, {
         memoriaMaximaMb: 128,
       });

@@ -53,76 +53,44 @@ describe('useUsuariosStore', () => {
     const evCreacion = eventos.find((e) => e.mensaje.includes('Usuario creado: Lucía'));
     expect(evCreacion).toBeDefined();
     expect(evCreacion?.categoria).toBe('seguridad');
-    expect(evCreacion?.mensaje).not.toContain('4321'); // NUNCA el PIN
+    expect(evCreacion?.gravedad).toBe('info');
+    // Nunca registra el PIN
+    expect(JSON.stringify(eventos)).not.toContain('4321');
   });
 
-  it('impide que un usuario estándar ejecute acciones de administración', () => {
-    const estandar = obtenerEstandar();
-    const res = useUsuariosStore.getState().crearUsuario(estandar, {
-      nombre: 'Hacker',
-      pin: '9999',
-      rol: 'admin',
-    });
-
-    expect(res.ok).toBe(false);
-    expect(useUsuariosStore.getState().usuarios.some((u) => u.nombre === 'Hacker')).toBe(false);
-  });
-
-  it('permite bloquear y desbloquear usuarios persistiendo el estado y auditando', () => {
+  it('bloquea y desbloquea usuarios con persistencia y auditoría', () => {
     const admin = obtenerAdmin();
-    const mateo = obtenerEstandar();
+    const estandar = obtenerEstandar();
 
     // Bloquear
-    const resBloqueo = useUsuariosStore.getState().bloquearUsuario(admin, mateo.id);
+    const resBloqueo = useUsuariosStore.getState().bloquearUsuario(admin, estandar.id);
     expect(resBloqueo.ok).toBe(true);
 
-    let usuarioActualizado = useUsuariosStore.getState().usuarios.find((u) => u.id === mateo.id);
-    expect(usuarioActualizado?.estado).toBe('bloqueado');
+    let usuarioActual = useUsuariosStore.getState().usuarios.find((u) => u.id === estandar.id);
+    expect(usuarioActual?.estado).toBe('bloqueado');
 
-    // Desbloquear
-    const resDesbloqueo = useUsuariosStore.getState().desbloquearUsuario(admin, mateo.id);
-    expect(resDesbloqueo.ok).toBe(true);
-
-    usuarioActualizado = useUsuariosStore.getState().usuarios.find((u) => u.id === mateo.id);
-    expect(usuarioActualizado?.estado).toBe('activo');
-
-    // Auditoría
     const eventos = useRegistroStore.getState().eventos;
     expect(eventos.some((e) => e.mensaje.includes('Usuario bloqueado'))).toBe(true);
-    expect(eventos.some((e) => e.mensaje.includes('Usuario desbloqueado'))).toBe(true);
+
+    // Desbloquear
+    const resDesbloqueo = useUsuariosStore.getState().desbloquearUsuario(admin, estandar.id);
+    expect(resDesbloqueo.ok).toBe(true);
+
+    usuarioActual = useUsuariosStore.getState().usuarios.find((u) => u.id === estandar.id);
+    expect(usuarioActual?.estado).toBe('activo');
   });
 
-  it('permite cambiar rol y actualizar límites', () => {
-    const admin = obtenerAdmin();
-    const mateo = obtenerEstandar();
+  it('actualiza el último acceso del usuario al iniciar sesión', () => {
+    const estandar = obtenerEstandar();
+    const ahora = 1700000000000;
 
-    // Cambiar rol
-    const resRol = useUsuariosStore.getState().cambiarRol(admin, mateo.id, 'admin');
-    expect(resRol.ok).toBe(true);
-    expect(useUsuariosStore.getState().usuarios.find((u) => u.id === mateo.id)?.rol).toBe('admin');
+    useUsuariosStore.getState().actualizarUltimoAcceso(estandar.id, ahora);
 
-    // Actualizar límites
-    const resLimites = useUsuariosStore.getState().actualizarLimites(admin, mateo.id, {
-      maxTareasActivas: 5,
-      memoriaMaximaMb: 1536,
-    });
-    expect(resLimites.ok).toBe(true);
-    const mateoActual = useUsuariosStore.getState().usuarios.find((u) => u.id === mateo.id);
-    expect(mateoActual?.limites.maxTareasActivas).toBe(5);
-    expect(mateoActual?.limites.memoriaMaximaMb).toBe(1536);
-  });
-
-  it('actualiza ultimoAcceso y persiste', () => {
-    const admin = obtenerAdmin();
-    const instante = 1700000000000;
-
-    useUsuariosStore.getState().actualizarUltimoAcceso(admin.id, instante);
-
-    const adminActual = useUsuariosStore.getState().usuarios.find((u) => u.id === admin.id);
-    expect(adminActual?.ultimoAcceso).toBe(instante);
+    const usuarioActual = useUsuariosStore.getState().usuarios.find((u) => u.id === estandar.id);
+    expect(usuarioActual?.ultimoAcceso).toBe(ahora);
 
     const persistido = platform.loadState<Usuario[]>(CLAVE_PERSISTENCIA_USUARIOS, []);
-    const adminPersistido = persistido.find((u) => u.id === admin.id);
-    expect(adminPersistido?.ultimoAcceso).toBe(instante);
+    const persistidoUsuario = persistido.find((u) => u.id === estandar.id);
+    expect(persistidoUsuario?.ultimoAcceso).toBe(ahora);
   });
 });

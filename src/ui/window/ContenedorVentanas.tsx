@@ -22,7 +22,7 @@ export function ContenedorVentanas() {
     enfocar,
     mover,
   } = useVentanas();
-  const { cambiarEstado, terminar } = useProcesos();
+  const { terminar } = useProcesos();
   const usuario = useSesion((s) => s.usuario);
 
   const manejarCerrar = (id: string, pid: number, appId: AppId) => {
@@ -33,14 +33,18 @@ export function ContenedorVentanas() {
     }
   };
 
-  const manejarMinimizar = (id: string, pid: number) => {
+  /**
+   * NOTA: El estado del proceso ('En ejecución', 'Listo') es gestionado exclusivamente
+   * por el planificador de CPU simulado. Enfocar o minimizar la ventana no detiene ni
+   * suspende la ejecución real de las aplicaciones web en el navegador (audio, iframes),
+   * sino que influye en la prioridad y quantum otorgados por el planificador.
+   */
+  const manejarMinimizar = (id: string) => {
     minimizar(id);
-    cambiarEstado(pid, 'Listo');
   };
 
-  const manejarEnfocar = (id: string, pid: number) => {
+  const manejarEnfocar = (id: string) => {
     enfocar(id);
-    cambiarEstado(pid, 'En ejecución');
   };
 
   // Solo renderizar las ventanas que pertenecen al usuario en sesión actual
@@ -59,8 +63,8 @@ export function ContenedorVentanas() {
             <Ventana
               ventana={ventana}
               enfocada={enfocada}
-              onEnfocar={() => manejarEnfocar(ventana.id, ventana.pid)}
-              onMinimizar={() => manejarMinimizar(ventana.id, ventana.pid)}
+              onEnfocar={() => manejarEnfocar(ventana.id)}
+              onMinimizar={() => manejarMinimizar(ventana.id)}
               onMaximizar={() => maximizar(ventana.id)}
               onCerrar={() => manejarCerrar(ventana.id, ventana.pid, ventana.appId)}
               onMover={(x, y) => mover(ventana.id, x, y)}

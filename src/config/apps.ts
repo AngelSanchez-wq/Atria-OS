@@ -65,7 +65,7 @@ export const APPS: Record<AppId, InfoApp> = {
     modo: 'interna',
   },
   monitor: {
-    nombre: 'Monitor de procesos',
+    nombre: 'Administración',
     rutaLogo: 'icons/monitor.svg',
     modo: 'interna',
     soloAdmin: true,

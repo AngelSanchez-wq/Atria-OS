@@ -38,7 +38,7 @@ type VentanasStore = {
   focusPid: string | null;
   /** Contador global de orden de foco. */
   _contadorFoco: number;
-  /** Último rechazo por límites para uso de la interfaz en la Entrega 2 */
+  /** Último rechazo por límites para mostrar mensajes a la persona usuaria */
   ultimoRechazoApertura: RechazoAperturaApp | null;
 
   abrir: (appId: AppId, pid: number, usuarioId?: string) => void;

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { Avatar } from './Avatar';
 
 describe('Avatar', () => {
@@ -11,13 +12,13 @@ describe('Avatar', () => {
         inicial="M"
         seleccionado={false}
         onSeleccionar={onSeleccionar}
-      />,
+      />
     );
 
     expect(screen.getByText('M')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Mia' })).toHaveAttribute(
       'aria-checked',
-      'false',
+      'false'
     );
 
     fireEvent.click(screen.getByRole('radio', { name: 'Mia' }));
@@ -32,16 +33,36 @@ describe('Avatar', () => {
         seleccionado
         esAdmin
         onSeleccionar={() => undefined}
-      />,
+      />
     );
 
     expect(screen.getByRole('radio', { name: 'Admin' })).toHaveAttribute(
       'aria-checked',
-      'true',
+      'true'
     );
   });
 
-  it('muestra la imagen en círculo con texto alternativo si se proporciona', () => {
+  it('muestra el avatar atenuado y con distintivo cuando está bloqueado', () => {
+    const { container } = render(
+      <Avatar
+        nombre="Mateo"
+        inicial="M"
+        seleccionado={false}
+        bloqueado={true}
+        onSeleccionar={() => undefined}
+      />
+    );
+
+    // Contiene la clase de atenuación
+    const circulo = container.querySelector('.opacity-60');
+    expect(circulo).toBeInTheDocument();
+
+    // Contiene el ícono de candado (svg de lucide-react)
+    const svgCandado = container.querySelector('svg');
+    expect(svgCandado).toBeInTheDocument();
+  });
+
+  it('muestra la imagen en círculo si se proporciona', () => {
     render(
       <Avatar
         nombre="Valery"
@@ -49,7 +70,7 @@ describe('Avatar', () => {
         imagen="data:image/png;base64,mock"
         seleccionado={false}
         onSeleccionar={() => undefined}
-      />,
+      />
     );
 
     const img = screen.getByRole('img', { name: 'Valery' });

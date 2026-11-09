@@ -60,13 +60,13 @@ describe('App', () => {
     // 2. Login
     expect(screen.getByText('¿Quién eres?')).toBeInTheDocument();
 
-    const usuarioradio = screen.getByRole('radio', { name: 'Mateo' });
+    const usuarioradio = screen.getByRole('radio', { name: 'Valery' });
     act(() => {
       usuarioradio.click();
     });
 
-    const usuarioMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo');
-    const pin = usuarioMateo?.pin || '0000';
+    const usuarioValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery');
+    const pin = usuarioValery?.pin || '1234';
 
     act(() => {
       for (const char of pin) {
@@ -79,7 +79,7 @@ describe('App', () => {
     });
 
     // 3. Bienvenida
-    expect(screen.getByText('Hola, Mateo')).toBeInTheDocument();
+    expect(screen.getByText('Hola, Valery')).toBeInTheDocument();
 
     const btnEmpezar = screen.getByRole('button', { name: 'Empezar' });
     act(() => {
@@ -107,13 +107,13 @@ describe('App', () => {
       await vi.runAllTimersAsync();
     });
 
-    // ── Iniciar con Mateo ──
+    // ── Iniciar con Valery ──
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
-    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    const pinValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery')?.pin || '1234';
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -124,15 +124,15 @@ describe('App', () => {
       screen.getByRole('button', { name: 'Empezar' }).click();
     });
 
-    // Mateo abre FocusPad
+    // Valery abre FocusPad
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'FocusPad' }));
     });
     expect(screen.getByRole('dialog', { name: 'FocusPad' })).toBeInTheDocument();
 
-    // ── Cambiar de usuario a Mia ──
+    // ── Cambiar de usuario a Admin ──
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Mateo' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Valery' }));
     });
     act(() => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Cambiar de usuario' }));
@@ -142,11 +142,11 @@ describe('App', () => {
     expect(screen.getByText('¿Quién eres?')).toBeInTheDocument();
 
     act(() => {
-      screen.getByRole('radio', { name: 'Mia' }).click();
+      screen.getByRole('radio', { name: 'Admin' }).click();
     });
-    const pinMia = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mia')?.pin || '1234';
+    const pinAdmin = USUARIOS_SEMILLA.find((u) => u.nombre === 'Admin')?.pin || '0000';
     act(() => {
-      for (const char of pinMia) {
+      for (const char of pinAdmin) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -157,22 +157,22 @@ describe('App', () => {
       screen.getByRole('button', { name: 'Empezar' }).click();
     });
 
-    // Mia no debe ver la ventana FocusPad de Mateo
+    // Admin no debe ver la ventana FocusPad de Valery
     expect(screen.queryByRole('dialog', { name: 'FocusPad' })).not.toBeInTheDocument();
 
-    // ── Volver con Mateo ──
+    // ── Volver con Valery ──
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Admin' }));
     });
     act(() => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Cambiar de usuario' }));
     });
 
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -180,7 +180,7 @@ describe('App', () => {
       screen.getByRole('button', { name: 'Entrar' }).click();
     });
 
-    // Mateo recupera su ventana
+    // Valery recupera su ventana
     expect(screen.getByRole('dialog', { name: 'FocusPad' })).toBeInTheDocument();
   });
 
@@ -192,11 +192,11 @@ describe('App', () => {
     });
 
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
-    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    const pinValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery')?.pin || '1234';
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -209,7 +209,7 @@ describe('App', () => {
 
     // Abrir menú de usuario y cerrar sesión
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Mateo' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Valery' }));
     });
     act(() => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
@@ -217,7 +217,7 @@ describe('App', () => {
 
     // Diálogo de confirmación
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByText('¿Cerrar sesión de Mateo?')).toBeInTheDocument();
+    expect(screen.getByText('¿Cerrar sesión de Valery?')).toBeInTheDocument();
 
     // Confirmar
     act(() => {
@@ -236,11 +236,11 @@ describe('App', () => {
     });
 
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
-    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    const pinValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery')?.pin || '1234';
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -270,13 +270,13 @@ describe('App', () => {
       await vi.runAllTimersAsync();
     });
 
-    // 2. Login con Mateo
+    // 2. Login con Valery
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
-    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    const pinValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery')?.pin || '1234';
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -285,7 +285,7 @@ describe('App', () => {
     });
 
     // 3. Bienvenida: Empezar primera tarea
-    expect(screen.getByText('Hola, Mateo')).toBeInTheDocument();
+    expect(screen.getByText('Hola, Valery')).toBeInTheDocument();
     act(() => {
       screen.getByRole('button', { name: 'Empezar' }).click();
     });
@@ -319,11 +319,11 @@ describe('App', () => {
     });
 
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
-    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    const pinValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery')?.pin || '1234';
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });
@@ -351,11 +351,11 @@ describe('App', () => {
     });
 
     act(() => {
-      screen.getByRole('radio', { name: 'Mateo' }).click();
+      screen.getByRole('radio', { name: 'Valery' }).click();
     });
-    const pinMateo = USUARIOS_SEMILLA.find((u) => u.nombre === 'Mateo')?.pin || '5678';
+    const pinValery = USUARIOS_SEMILLA.find((u) => u.nombre === 'Valery')?.pin || '1234';
     act(() => {
-      for (const char of pinMateo) {
+      for (const char of pinValery) {
         fireEvent.keyDown(window, { key: char });
       }
     });

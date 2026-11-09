@@ -13,7 +13,9 @@ import { useVentanas } from './store/ventanas';
 import { useProcesos } from './store/procesos';
 import { useEnergia } from './store/energia';
 import { useNotificaciones } from './store/notificaciones';
+import { usePlanificador } from './store/planificador';
 import { iniciarSimuladorNotificaciones } from './system/notifications/simulador';
+import { iniciarMotorPlanificador } from './system/scheduling/motor';
 import {
   restaurarProcesosDeSuspension,
   limpiarProcesosPorReinicioOApagado,
@@ -59,10 +61,15 @@ export default function App() {
   useEffect(() => {
     if (!sesionActiva) return;
 
-    // TODO: Pausar o suspender el simulador durante suspensión y bloqueo cuando existan
+    // Iniciar simulador de notificaciones y motor del planificador de procesos
     const detenerSimulador = iniciarSimuladorNotificaciones();
+    usePlanificador.getState().iniciar();
+    const detenerPlanificador = iniciarMotorPlanificador();
+
     return () => {
       detenerSimulador();
+      detenerPlanificador();
+      usePlanificador.getState().detener();
     };
   }, [sesionActiva]);
 

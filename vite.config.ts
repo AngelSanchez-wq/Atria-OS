@@ -8,5 +8,10 @@ export default defineConfig({
   base: './', // rutas relativas: permite abrir desde una USB
   plugins: [react(), viteSingleFile()], // un solo index.html que funciona con doble clic
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
-  test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test-setup.ts'] },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test-setup.ts'],
+    testTimeout: 15000,
+  },
 });

@@ -1,72 +1,60 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SelectorSegmentado, OpcionSegmentada } from './SelectorSegmentado';
-
-const OPCIONES: OpcionSegmentada[] = [
-  { id: 'normal', etiqueta: 'Normal' },
-  { id: 'grande', etiqueta: 'Grande' },
-  { id: 'muy-grande', etiqueta: 'Muy grande' },
-];
+import { SelectorSegmentado } from './SelectorSegmentado';
 
 describe('SelectorSegmentado', () => {
-  it('renderiza con role radiogroup y las opciones con role radio', () => {
+  const opciones = [
+    { valor: 'estandar', etiqueta: 'Estándar' },
+    { valor: 'admin', etiqueta: 'Administrador' },
+  ] as const;
+
+  it('renderiza radiogroup con las opciones y marca la seleccionada', () => {
+    const onSeleccionar = vi.fn();
     render(
       <SelectorSegmentado
-        opciones={OPCIONES}
-        valorActual="normal"
-        onSeleccionar={vi.fn()}
-        etiquetaAria="Tamaño de texto"
+        opciones={opciones}
+        valorSeleccionado="estandar"
+        onSeleccionar={onSeleccionar}
+        ariaLabel="Rol de usuario"
       />
     );
 
-    const radiogroup = screen.getByRole('radiogroup', {
-      name: 'Tamaño de texto',
-    });
+    const radiogroup = screen.getByRole('radiogroup', { name: 'Rol de usuario' });
     expect(radiogroup).toBeInTheDocument();
 
-    const radioNormal = screen.getByRole('radio', { name: 'Normal' });
-    const radioGrande = screen.getByRole('radio', { name: 'Grande' });
-    const radioMuyGrande = screen.getByRole('radio', { name: 'Muy grande' });
+    const optEstandar = screen.getByRole('radio', { name: 'Estándar' });
+    const optAdmin = screen.getByRole('radio', { name: 'Administrador' });
 
-    expect(radioNormal).toHaveAttribute('aria-checked', 'true');
-    expect(radioGrande).toHaveAttribute('aria-checked', 'false');
-    expect(radioMuyGrande).toHaveAttribute('aria-checked', 'false');
+    expect(optEstandar).toHaveAttribute('aria-checked', 'true');
+    expect(optAdmin).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('llama a onSeleccionar al hacer clic en una opción', () => {
+  it('permite cambiar la selección mediante clic', () => {
     const onSeleccionar = vi.fn();
     render(
       <SelectorSegmentado
-        opciones={OPCIONES}
-        valorActual="normal"
+        opciones={opciones}
+        valorSeleccionado="estandar"
         onSeleccionar={onSeleccionar}
-        etiquetaAria="Tamaño de texto"
       />
     );
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Grande' }));
-    expect(onSeleccionar).toHaveBeenCalledWith('grande');
+    fireEvent.click(screen.getByRole('radio', { name: 'Administrador' }));
+    expect(onSeleccionar).toHaveBeenCalledWith('admin');
   });
 
-  it('permite navegar cíclicamente con las flechas del teclado', () => {
+  it('navega con flechas del teclado', () => {
     const onSeleccionar = vi.fn();
     render(
       <SelectorSegmentado
-        opciones={OPCIONES}
-        valorActual="normal"
+        opciones={opciones}
+        valorSeleccionado="estandar"
         onSeleccionar={onSeleccionar}
-        etiquetaAria="Tamaño de texto"
       />
     );
 
-    const radioNormal = screen.getByRole('radio', { name: 'Normal' });
-
-    // Flecha derecha avanza a 'grande'
-    fireEvent.keyDown(radioNormal, { key: 'ArrowRight' });
-    expect(onSeleccionar).toHaveBeenCalledWith('grande');
-
-    // Flecha izquierda retrocede a 'muy-grande' (cíclico)
-    fireEvent.keyDown(radioNormal, { key: 'ArrowLeft' });
-    expect(onSeleccionar).toHaveBeenCalledWith('muy-grande');
+    const radiogroup = screen.getByRole('radiogroup');
+    fireEvent.keyDown(radiogroup, { key: 'ArrowRight' });
+    expect(onSeleccionar).toHaveBeenCalledWith('admin');
   });
 });

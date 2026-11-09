@@ -16,18 +16,18 @@ describe('Dock', () => {
     render(<Dock onAbrirApp={onAbrir} />);
 
     expect(screen.getByRole('button', { name: 'FocusPad' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Monitor de procesos' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Administración' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'FocusPad' }));
     expect(onAbrir).toHaveBeenCalledWith('focuspad');
   });
 
-  it('muestra el monitor de procesos cuando el usuario es administrador', () => {
+  it('muestra la app Administración cuando el usuario es administrador', () => {
     useSesion.setState({
       usuario: USUARIOS_SEMILLA[2],
     });
 
     render(<Dock onAbrirApp={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Monitor de procesos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Administración' })).toBeInTheDocument();
   });
 });

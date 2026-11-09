@@ -2,24 +2,19 @@ import type { Usuario } from '../types';
 import { LIMITES_USUARIO_POR_DEFECTO } from './constantes';
 
 /**
- * Datos de prueba para desarrollo.
- * TODO: Reemplazar el PIN en texto plano por un hash criptográfico con sal en una futura entrega.
- * NUNCA registrar ni mostrar el PIN en registros o vistas.
+ * Datos de prueba para desarrollo y semillas iniciales.
+ * TODO: Reemplazar el PIN en texto plano por un hash con sal criptográfica segura.
  */
 export const USUARIOS_SEMILLA: Usuario[] = [
   {
-    id: 'mia',
-    nombre: 'Mia',
-    inicial: 'M',
+    id: 'valery',
+    nombre: 'Valery',
+    inicial: 'V',
     rol: 'estandar',
     pin: '1234',
     estado: 'activo',
     ultimoAcceso: null,
-    limites: {
-      appsHabilitadas: [...LIMITES_USUARIO_POR_DEFECTO.appsHabilitadas],
-      maxTareasActivas: LIMITES_USUARIO_POR_DEFECTO.maxTareasActivas,
-      memoriaMaximaMb: LIMITES_USUARIO_POR_DEFECTO.memoriaMaximaMb,
-    },
+    limites: { ...LIMITES_USUARIO_POR_DEFECTO },
   },
   {
     id: 'mateo',
@@ -27,13 +22,9 @@ export const USUARIOS_SEMILLA: Usuario[] = [
     inicial: 'M',
     rol: 'estandar',
     pin: '5678',
-    estado: 'activo',
+    estado: 'bloqueado',
     ultimoAcceso: null,
-    limites: {
-      appsHabilitadas: [...LIMITES_USUARIO_POR_DEFECTO.appsHabilitadas],
-      maxTareasActivas: LIMITES_USUARIO_POR_DEFECTO.maxTareasActivas,
-      memoriaMaximaMb: LIMITES_USUARIO_POR_DEFECTO.memoriaMaximaMb,
-    },
+    limites: { ...LIMITES_USUARIO_POR_DEFECTO },
   },
   {
     id: 'admin',
@@ -43,10 +34,6 @@ export const USUARIOS_SEMILLA: Usuario[] = [
     pin: '0000',
     estado: 'activo',
     ultimoAcceso: null,
-    limites: {
-      appsHabilitadas: [...LIMITES_USUARIO_POR_DEFECTO.appsHabilitadas],
-      maxTareasActivas: LIMITES_USUARIO_POR_DEFECTO.maxTareasActivas,
-      memoriaMaximaMb: LIMITES_USUARIO_POR_DEFECTO.memoriaMaximaMb,
-    },
+    limites: { ...LIMITES_USUARIO_POR_DEFECTO },
   },
 ];
