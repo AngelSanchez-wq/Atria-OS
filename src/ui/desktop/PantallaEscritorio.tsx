@@ -6,6 +6,9 @@ import { useSesion } from '../../store/sesion';
 import { useEnergia } from '../../store/energia';
 import { useNotificaciones, seleccionarSinLeer } from '../../store/notificaciones';
 import { useVolumenStore } from '../../store/volumen';
+import { useRedStore } from '../../store/red';
+import { useBateriaStore } from '../../store/bateria';
+import { usePreferenciasStore } from '../../store/preferencias';
 import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
 import { estadoBuho } from '../../kernel/tasks/buho';
 import { PantallaLogro } from '../achievement/PantallaLogro';
@@ -72,6 +75,31 @@ export function PantallaEscritorio({
   const silenciado = useVolumenStore((s) => s.silenciado);
   const setVolumen = useVolumenStore((s) => s.setVolumen);
   const alternarSilencio = useVolumenStore((s) => s.alternarSilencio);
+
+  // Red y Wi-Fi
+  const redEnLinea = useRedStore((s) => s.enLinea);
+  const redCalidad = useRedStore((s) => s.calidad);
+  const wifiHabilitado = useRedStore((s) => s.wifiHabilitado);
+  const redConectadaId = useRedStore((s) => s.redConectadaId);
+  const redConectandoId = useRedStore((s) => s.conectandoId);
+  const redes = useRedStore((s) => s.redes);
+  const setWifiHabilitado = useRedStore((s) => s.setWifiHabilitado);
+  const conectarRed = useRedStore((s) => s.conectarRed);
+
+  // Batería
+  const bateriaNivel = useBateriaStore((s) => s.nivel);
+  const bateriaCargando = useBateriaStore((s) => s.cargando);
+  const bateriaEstado = useBateriaStore((s) => s.estado);
+  const bateriaTiempoRestante = useBateriaStore((s) => s.tiempoRestante);
+  const bateriaEsSimulada = useBateriaStore((s) => s.esSimulada);
+
+  // Ahorro de energía (reutiliza movimiento de preferencias)
+  const movimiento = usePreferenciasStore((s) => s.movimiento);
+  const setMovimiento = usePreferenciasStore((s) => s.setMovimiento);
+  const ahorroEnergia = movimiento === 'reducir';
+  const alternarAhorroEnergia = (activo: boolean) => {
+    setMovimiento(activo ? 'reducir' : 'sistema');
+  };
 
   const [avisoMemoria, setAvisoMemoria] = useState<string | null>(null);
 
@@ -270,6 +298,21 @@ export function PantallaEscritorio({
         silenciado={silenciado}
         onCambiarVolumen={setVolumen}
         onAlternarSilencio={alternarSilencio}
+        redEnLinea={redEnLinea}
+        redCalidad={redCalidad}
+        wifiHabilitado={wifiHabilitado}
+        redConectadaId={redConectadaId}
+        redConectandoId={redConectandoId}
+        redes={redes}
+        onAlternarWifi={setWifiHabilitado}
+        onConectarRed={conectarRed}
+        bateriaNivel={bateriaNivel}
+        bateriaCargando={bateriaCargando}
+        bateriaEstado={bateriaEstado}
+        bateriaTiempoRestante={bateriaTiempoRestante}
+        bateriaEsSimulada={bateriaEsSimulada}
+        ahorroEnergia={ahorroEnergia}
+        onAlternarAhorroEnergia={alternarAhorroEnergia}
         onBloquear={manejarBloquear}
         onSuspender={manejarSuspender}
         onReiniciar={solicitarReiniciar}

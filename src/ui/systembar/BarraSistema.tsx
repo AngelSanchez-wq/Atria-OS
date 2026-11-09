@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Bell, Power, Volume2, Volume1, VolumeX, Wifi } from 'lucide-react';
+import { Bell, Power, Volume2, Volume1, VolumeX, Wifi, WifiOff } from 'lucide-react';
 import {
   ALTURA_BARRA_CLASE,
   CLASE_CIRCULO_BUHO,
@@ -15,6 +15,10 @@ import { IndicadorBateria } from './IndicadorBateria';
 import { MenuEncendido } from './MenuEncendido';
 import { MenuUsuario } from './MenuUsuario';
 import { PanelVolumen } from './PanelVolumen';
+import { PanelWifi } from './PanelWifi';
+import { PanelBateria } from './PanelBateria';
+import { RedWifi, REDES_SIMULADAS_DISPONIBLES } from '../../store/red';
+import { EstadoBateria } from '../../kernel/power/bateria';
 
 type BarraSistemaProps = {
   titulo?: string;
@@ -22,6 +26,27 @@ type BarraSistemaProps = {
   estadoBuho?: 'reposo' | 'foco' | 'logro';
   volumen?: number;
   silenciado?: boolean;
+
+  // Wi-Fi y Red
+  redEnLinea?: boolean;
+  redCalidad?: string;
+  wifiHabilitado?: boolean;
+  redConectadaId?: string | null;
+  redConectandoId?: string | null;
+  redes?: RedWifi[];
+  onAlternarWifi?: (activo: boolean) => void;
+  onConectarRed?: (id: string) => void;
+
+  // Batería
+  bateriaNivel?: number;
+  bateriaCargando?: boolean;
+  bateriaEstado?: EstadoBateria;
+  bateriaTiempoRestante?: string | null;
+  bateriaEsSimulada?: boolean;
+  ahorroEnergia?: boolean;
+  onAlternarAhorroEnergia?: (activo: boolean) => void;
+
+  // Callbacks generales
   onVolver?: () => void;
   onWifi?: () => void;
   onVolumen?: () => void;
@@ -46,6 +71,21 @@ export function BarraSistema({
   estadoBuho = 'foco',
   volumen,
   silenciado,
+  redEnLinea = true,
+  redCalidad,
+  wifiHabilitado = true,
+  redConectadaId = 'casa-5g',
+  redConectandoId = null,
+  redes = REDES_SIMULADAS_DISPONIBLES,
+  onAlternarWifi,
+  onConectarRed,
+  bateriaNivel,
+  bateriaCargando = false,
+  bateriaEstado = 'descargando',
+  bateriaTiempoRestante,
+  bateriaEsSimulada = true,
+  ahorroEnergia = false,
+  onAlternarAhorroEnergia,
   onVolver,
   onWifi,
   onVolumen,
@@ -69,20 +109,26 @@ export function BarraSistema({
   const inicial = usuario?.inicial ?? '?';
   const nombreUsuario = usuario?.nombre ?? 'Usuario';
 
+  const nivelBateriaEfectivo = bateriaNivel ?? estado.bateriaPorcentaje;
+
   const [menuEncendidoAbierto, setMenuEncendidoAbierto] = useState(false);
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const [panelVolumenAbierto, setPanelVolumenAbierto] = useState(false);
+  const [panelWifiAbierto, setPanelWifiAbierto] = useState(false);
+  const [panelBateriaAbierto, setPanelBateriaAbierto] = useState(false);
 
   const botonPowerRef = useRef<HTMLButtonElement>(null);
   const botonUsuarioRef = useRef<HTMLButtonElement>(null);
   const botonVolumenRef = useRef<HTMLButtonElement>(null);
+  const botonWifiRef = useRef<HTMLButtonElement>(null);
+  const botonBateriaRef = useRef<HTMLButtonElement>(null);
 
   const alternarMenuEncendido = () => {
     setMenuUsuarioAbierto(false);
     setPanelVolumenAbierto(false);
-    if (onEncendido) {
-      onEncendido();
-    }
+    setPanelWifiAbierto(false);
+    setPanelBateriaAbierto(false);
+    onEncendido?.();
     setMenuEncendidoAbierto((prev) => !prev);
   };
 
@@ -94,9 +140,9 @@ export function BarraSistema({
   const alternarMenuUsuario = () => {
     setMenuEncendidoAbierto(false);
     setPanelVolumenAbierto(false);
-    if (onUsuario) {
-      onUsuario();
-    }
+    setPanelWifiAbierto(false);
+    setPanelBateriaAbierto(false);
+    onUsuario?.();
     setMenuUsuarioAbierto((prev) => !prev);
   };
 
@@ -108,15 +154,43 @@ export function BarraSistema({
   const alternarPanelVolumen = () => {
     setMenuEncendidoAbierto(false);
     setMenuUsuarioAbierto(false);
-    if (onVolumen) {
-      onVolumen();
-    }
+    setPanelWifiAbierto(false);
+    setPanelBateriaAbierto(false);
+    onVolumen?.();
     setPanelVolumenAbierto((prev) => !prev);
   };
 
   const cerrarPanelVolumen = () => {
     setPanelVolumenAbierto(false);
     botonVolumenRef.current?.focus();
+  };
+
+  const alternarPanelWifi = () => {
+    setMenuEncendidoAbierto(false);
+    setMenuUsuarioAbierto(false);
+    setPanelVolumenAbierto(false);
+    setPanelBateriaAbierto(false);
+    onWifi?.();
+    setPanelWifiAbierto((prev) => !prev);
+  };
+
+  const cerrarPanelWifi = () => {
+    setPanelWifiAbierto(false);
+    botonWifiRef.current?.focus();
+  };
+
+  const alternarPanelBateria = () => {
+    setMenuEncendidoAbierto(false);
+    setMenuUsuarioAbierto(false);
+    setPanelVolumenAbierto(false);
+    setPanelWifiAbierto(false);
+    onBateria?.();
+    setPanelBateriaAbierto((prev) => !prev);
+  };
+
+  const cerrarPanelBateria = () => {
+    setPanelBateriaAbierto(false);
+    botonBateriaRef.current?.focus();
   };
 
   const IconoVolumen = silenciado
@@ -130,6 +204,23 @@ export function BarraSistema({
     : volumen !== undefined
     ? `Volumen ${Math.round(volumen * 100)} %`
     : 'Volumen';
+
+  // Ícono de Wi-Fi refleja el estado REAL de conexión: desconectado si no hay internet real
+  const wifiConectadoReal = redEnLinea && wifiHabilitado;
+  const IconoWifi = wifiConectadoReal ? Wifi : WifiOff;
+
+  // Etiqueta accesible de Wi-Fi
+  const redConectada = redes.find((r) => r.id === redConectadaId);
+  let etiquetaWifi: string;
+  if (!redEnLinea) {
+    etiquetaWifi = 'Wi-Fi, sin conexión';
+  } else if (!wifiHabilitado) {
+    etiquetaWifi = 'Wi-Fi desactivado';
+  } else if (redConectada) {
+    etiquetaWifi = `Wi-Fi, conectado a ${redConectada.nombre}`;
+  } else {
+    etiquetaWifi = 'Wi-Fi, desconectado';
+  }
 
   return (
     <header
@@ -169,11 +260,12 @@ export function BarraSistema({
         </time>
 
         <BotonIcono
-          etiqueta="Wi‑Fi"
-          onClick={onWifi}
-          className="text-muted"
+          ref={botonWifiRef}
+          etiqueta={etiquetaWifi}
+          onClick={alternarPanelWifi}
+          className={panelWifiAbierto ? 'text-accent' : 'text-muted'}
         >
-          <Wifi size={TAMANO_ICONO_BARRA} aria-hidden="true" />
+          <IconoWifi size={TAMANO_ICONO_BARRA} aria-hidden="true" />
         </BotonIcono>
 
         <BotonIcono
@@ -186,8 +278,12 @@ export function BarraSistema({
         </BotonIcono>
 
         <IndicadorBateria
-          porcentaje={estado.bateriaPorcentaje}
-          onClick={onBateria}
+          ref={botonBateriaRef}
+          porcentaje={nivelBateriaEfectivo}
+          cargando={bateriaCargando}
+          estado={bateriaEstado}
+          abierto={panelBateriaAbierto}
+          onClick={alternarPanelBateria}
         />
 
         <BotonIcono
@@ -272,6 +368,31 @@ export function BarraSistema({
         onCerrar={cerrarPanelVolumen}
         onCambiarVolumen={onCambiarVolumen ?? (() => {})}
         onAlternarSilencio={onAlternarSilencio ?? (() => {})}
+      />
+
+      <PanelWifi
+        abierto={panelWifiAbierto}
+        enLinea={redEnLinea}
+        calidad={redCalidad}
+        wifiHabilitado={wifiHabilitado}
+        redConectadaId={redConectadaId}
+        conectandoId={redConectandoId}
+        redes={redes}
+        onCerrar={cerrarPanelWifi}
+        onAlternarWifi={onAlternarWifi ?? (() => {})}
+        onConectarRed={onConectarRed ?? (() => {})}
+      />
+
+      <PanelBateria
+        abierto={panelBateriaAbierto}
+        nivel={nivelBateriaEfectivo}
+        cargando={bateriaCargando}
+        estado={bateriaEstado}
+        tiempoRestante={bateriaTiempoRestante ?? null}
+        esSimulada={bateriaEsSimulada}
+        ahorroEnergia={ahorroEnergia}
+        onCerrar={cerrarPanelBateria}
+        onAlternarAhorroEnergia={onAlternarAhorroEnergia ?? (() => {})}
       />
     </header>
   );

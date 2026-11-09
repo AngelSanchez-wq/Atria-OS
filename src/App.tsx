@@ -16,6 +16,8 @@ import { useNotificaciones } from './store/notificaciones';
 import { usePlanificador } from './store/planificador';
 import { iniciarSimuladorNotificaciones } from './system/notifications/simulador';
 import { iniciarMotorPlanificador } from './system/scheduling/motor';
+import { iniciarServicioBateria } from './system/power/servicio';
+import { iniciarServicioRed } from './system/network/servicio';
 import {
   restaurarProcesosDeSuspension,
   limpiarProcesosPorReinicioOApagado,
@@ -61,15 +63,19 @@ export default function App() {
   useEffect(() => {
     if (!sesionActiva) return;
 
-    // Iniciar simulador de notificaciones y motor del planificador de procesos
+    // Iniciar servicios del sistema durante la sesión activa
     const detenerSimulador = iniciarSimuladorNotificaciones();
     usePlanificador.getState().iniciar();
     const detenerPlanificador = iniciarMotorPlanificador();
+    const detenerBateria = iniciarServicioBateria();
+    const detenerRed = iniciarServicioRed();
 
     return () => {
       detenerSimulador();
       detenerPlanificador();
       usePlanificador.getState().detener();
+      detenerBateria();
+      detenerRed();
     };
   }, [sesionActiva]);
 

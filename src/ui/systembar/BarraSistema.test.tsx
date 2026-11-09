@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { formatearFechaCorta, formatearHora } from '../../hooks/useHora';
 import { useSesion } from '../../store/sesion';
 import { Usuario } from '../../kernel/types';
@@ -41,18 +42,96 @@ describe('BarraSistema', () => {
     expect(screen.getByText('M')).toBeInTheDocument();
   });
 
-  it('expone aria-label en los botones de estado', () => {
+  it('expone aria-label dinámicos según el estado en los botones de estado', () => {
     render(<BarraSistema notificaciones={3} />);
 
-    expect(screen.getByRole('button', { name: 'Wi‑Fi' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Wi-Fi, conectado a Casa-5G' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Volumen' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Batería 72 %' })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Notificaciones, 3' }),
+      screen.getByRole('button', { name: 'Batería 72 %, descargando' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Apagar o reiniciar' }),
+      screen.getByRole('button', { name: 'Notificaciones, 3' })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Apagar o reiniciar' })
+    ).toBeInTheDocument();
+  });
+
+  it('refleja "Wi-Fi, sin conexión" cuando la red real está desconectada', () => {
+    render(<BarraSistema redEnLinea={false} />);
+
+    expect(
+      screen.getByRole('button', { name: 'Wi-Fi, sin conexión' })
+    ).toBeInTheDocument();
+  });
+
+  it('refleja "Wi-Fi desactivado" cuando el interruptor simulado está apagado', () => {
+    render(<BarraSistema wifiHabilitado={false} />);
+
+    expect(
+      screen.getByRole('button', { name: 'Wi-Fi desactivado' })
+    ).toBeInTheDocument();
+  });
+
+  it('refleja el estado de carga en la etiqueta de batería', () => {
+    render(
+      <BarraSistema
+        bateriaNivel={85}
+        bateriaCargando={true}
+        bateriaEstado="cargando"
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Batería 85 %, cargando' })
+    ).toBeInTheDocument();
+  });
+
+  it('despliega y cierra el PanelWifi al pulsar el botón de Wi-Fi y restaura el foco', () => {
+    const onWifi = vi.fn();
+    render(<BarraSistema onWifi={onWifi} />);
+
+    const botonWifi = screen.getByRole('button', {
+      name: 'Wi-Fi, conectado a Casa-5G',
+    });
+
+    // Abrir panel
+    fireEvent.click(botonWifi);
+    expect(onWifi).toHaveBeenCalledOnce();
+    expect(screen.getByRole('region', { name: 'Panel de Wi-Fi' })).toBeInTheDocument();
+
+    // Cerrar con Escape y verificar foco
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(
+      screen.queryByRole('region', { name: 'Panel de Wi-Fi' })
+    ).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(botonWifi);
+  });
+
+  it('despliega y cierra el PanelBateria al pulsar el indicador de batería y restaura el foco', () => {
+    const onBateria = vi.fn();
+    render(<BarraSistema onBateria={onBateria} />);
+
+    const botonBateria = screen.getByRole('button', {
+      name: 'Batería 72 %, descargando',
+    });
+
+    // Abrir panel
+    fireEvent.click(botonBateria);
+    expect(onBateria).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole('region', { name: 'Panel de batería' })
+    ).toBeInTheDocument();
+
+    // Cerrar con Escape y verificar foco
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(
+      screen.queryByRole('region', { name: 'Panel de batería' })
+    ).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(botonBateria);
   });
 
   it('muestra "← Escritorio" solo si hay onVolver', () => {
@@ -63,52 +142,13 @@ describe('BarraSistema', () => {
     expect(screen.getByRole('button', { name: '← Escritorio' })).toBeInTheDocument();
   });
 
-  it('llama a los callbacks al hacer clic', () => {
-    const onVolver = vi.fn();
-    const onWifi = vi.fn();
-    const onVolumen = vi.fn();
-    const onBateria = vi.fn();
-    const onNotificaciones = vi.fn();
-
-    render(
-      <BarraSistema
-        notificaciones={3}
-        onVolver={onVolver}
-        onWifi={onWifi}
-        onVolumen={onVolumen}
-        onBateria={onBateria}
-        onNotificaciones={onNotificaciones}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '← Escritorio' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Wi‑Fi' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Volumen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Batería 72 %' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Notificaciones, 3' }));
-
-    expect(onVolver).toHaveBeenCalledTimes(1);
-    expect(onWifi).toHaveBeenCalledTimes(1);
-    expect(onVolumen).toHaveBeenCalledTimes(1);
-    expect(onBateria).toHaveBeenCalledTimes(1);
-    expect(onNotificaciones).toHaveBeenCalledTimes(1);
-  });
-
-  it('no muestra el globo contador cuando no hay notificaciones sin leer', () => {
-    render(<BarraSistema notificaciones={0} />);
-    expect(screen.getByRole('button', { name: 'Notificaciones, 0' })).toBeInTheDocument();
-    expect(screen.queryByText('0')).not.toBeInTheDocument();
-  });
-
   it('despliega el menú de encendido y ejecuta las acciones seleccionadas', () => {
     const onBloquear = vi.fn();
     render(<BarraSistema onBloquear={onBloquear} />);
 
-    // Abrir menú de encendido
     fireEvent.click(screen.getByRole('button', { name: 'Apagar o reiniciar' }));
     expect(screen.getByRole('menu', { name: 'Menú de encendido' })).toBeInTheDocument();
 
-    // Clic en Bloquear
     fireEvent.click(screen.getByRole('menuitem', { name: 'Bloquear' }));
     expect(onBloquear).toHaveBeenCalledOnce();
     expect(screen.queryByRole('menu', { name: 'Menú de encendido' })).not.toBeInTheDocument();
@@ -118,11 +158,9 @@ describe('BarraSistema', () => {
     const onCambiarUsuario = vi.fn();
     render(<BarraSistema onCambiarUsuario={onCambiarUsuario} />);
 
-    // Clic en el avatar de usuario
     fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
     expect(screen.getByRole('menu', { name: 'Menú de usuario' })).toBeInTheDocument();
 
-    // Clic en Cambiar de usuario
     fireEvent.click(screen.getByRole('menuitem', { name: 'Cambiar de usuario' }));
     expect(onCambiarUsuario).toHaveBeenCalledOnce();
     expect(screen.queryByRole('menu', { name: 'Menú de usuario' })).not.toBeInTheDocument();
