@@ -27,7 +27,6 @@ import {
   restaurarProcesosDeUsuario,
   terminarProcesosDeUsuario,
 } from './kernel/processes/usuario-aislamiento';
-import { TAREAS_SEMILLA } from './kernel/tasks/tareas-semilla';
 import { Usuario } from './kernel/types';
 import { registrar } from './system/logging/servicio';
 
@@ -44,7 +43,7 @@ export default function App() {
   const limpiarUsuario = useSesion((s) => s.limpiarUsuario);
 
   const iniciada = useTareas((s) => s.iniciada);
-  const empezarTarea = useTareas((s) => s.empezar);
+  const empezarTarea = useTareas((s) => s.empezarTarea);
 
   const procesos = useProcesos((s) => s.procesos);
 
@@ -81,6 +80,8 @@ export default function App() {
 
   const manejarIngresar = (u: Usuario) => {
     ingresar(u);
+    // Primer ingreso: copia las tareas semilla una sola vez
+    useTareas.getState().inicializarUsuario(u.id);
     // Restaurar procesos del usuario
     const estadosPrevios = estadosProcesosPorUsuario[u.id];
     if (estadosPrevios) {
@@ -173,6 +174,8 @@ export default function App() {
       useProcesos.setState({ procesos: procesosLimpios });
       useVentanas.getState().cerrarDeUsuario(usuario.id);
       limpiarUsuario(usuario.id);
+      // Sin temporizador vivo, la tarea en curso vuelve a quedar pendiente
+      useTareas.getState().liberarTareasEnCurso(usuario.id);
       useTareas.setState({
         tareaActiva: null,
         pendientes: [],
@@ -233,6 +236,7 @@ export default function App() {
       <PantallaApagando
         modo="apagando"
         onTerminar={() => {
+          if (usuario) useTareas.getState().liberarTareasEnCurso(usuario.id);
           salir();
           useVentanas.setState({ ventanas: [], focusPid: null, _contadorFoco: 0 });
           useProcesos.setState({ procesos: limpiarProcesosPorReinicioOApagado() });
@@ -258,6 +262,7 @@ export default function App() {
       <PantallaApagando
         modo="reiniciando"
         onTerminar={() => {
+          if (usuario) useTareas.getState().liberarTareasEnCurso(usuario.id);
           salir();
           useVentanas.setState({ ventanas: [], focusPid: null, _contadorFoco: 0 });
           useProcesos.setState({ procesos: limpiarProcesosPorReinicioOApagado() });
@@ -294,8 +299,9 @@ export default function App() {
       {!iniciada ? (
         <PantallaBienvenida
           onEmpezar={(tarea) => {
-            const pendientes = TAREAS_SEMILLA.filter((t) => t.id !== tarea.id);
-            empezarTarea(tarea, pendientes);
+            // Si no se puede empezar (p. ej., app deshabilitada), el resultado trae el motivo.
+            // TODO (Entrega 2): mostrar el motivo con TEXTOS_MOTIVOS_TAREAS.
+            empezarTarea(tarea.id);
           }}
           onCambiarUsuario={manejarCambiarUsuario}
           onCerrarSesion={solicitarCerrarSesion}

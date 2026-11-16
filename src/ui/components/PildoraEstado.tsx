@@ -11,7 +11,9 @@ export type PildoraEstadoProps = {
 
 const CLASES_POR_ESTADO: Record<string, string> = {
   'En ejecución': 'bg-soft text-accent-strong border border-accent/30',
+  'En curso': 'bg-soft text-accent-strong border border-accent/30',
   'Listo': 'bg-soft/70 text-accent-strong',
+  'Importante': 'bg-warm text-warm-ink border border-warm-line',
   'Bloqueado': 'bg-warm text-warm-ink border border-warm-line',
   'bloqueado': 'bg-warm text-warm-ink border border-warm-line',
   'Pausado': 'bg-line text-muted',

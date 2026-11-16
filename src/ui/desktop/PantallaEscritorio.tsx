@@ -3,6 +3,7 @@ import { useTareas } from '../../store/tareas';
 import { useVentanas } from '../../store/ventanas';
 import { useProcesos } from '../../store/procesos';
 import { useSesion } from '../../store/sesion';
+import { useUsuariosStore } from '../../store/usuarios';
 import { useEnergia } from '../../store/energia';
 import { useNotificaciones, seleccionarSinLeer } from '../../store/notificaciones';
 import { useVolumenStore } from '../../store/volumen';
@@ -11,6 +12,7 @@ import { useBateriaStore } from '../../store/bateria';
 import { usePreferenciasStore } from '../../store/preferencias';
 import { pausarProcesosPorSuspension } from '../../kernel/power/transiciones';
 import { estadoBuho } from '../../kernel/tasks/buho';
+import { type DatosTarea } from '../../kernel/tasks/operaciones';
 import { PantallaLogro } from '../achievement/PantallaLogro';
 import { AppId } from '../../kernel/types';
 import { APPS } from '../../config/apps';
@@ -23,6 +25,7 @@ import { TarjetaTareaActiva } from './TarjetaTareaActiva';
 import { FranjaPendientes } from './FranjaPendientes';
 import { ContenedorVentanas } from '../window/ContenedorVentanas';
 import { DialogoRechazoApp } from './DialogoRechazoApp';
+import { DialogoTarea } from '../tasks/DialogoTarea';
 import { FACTOR_VELOCIDAD_DEMO } from '../../config/tiempo';
 
 
@@ -60,6 +63,11 @@ export function PantallaEscritorio({
   } = useVentanas();
   const { procesos, lanzar, cambiarEstado } = useProcesos();
   const usuario = useSesion((s) => s.usuario);
+  const usuarioActualizado = useUsuariosStore((s) =>
+    s.usuarios.find((u) => u.id === usuario?.id)
+  );
+  const usuarioVigente = usuarioActualizado ?? usuario;
+  const crearTarea = useTareas((s) => s.crear);
   const {
     transicionar,
     solicitarApagar,
@@ -102,6 +110,17 @@ export function PantallaEscritorio({
   };
 
   const [avisoMemoria, setAvisoMemoria] = useState<string | null>(null);
+  const [abiertoNuevaTarea, setAbiertoNuevaTarea] = useState(false);
+  const [anuncioTarea, setAnuncioTarea] = useState('');
+
+  const manejarCrearTarea = (datos: DatosTarea) => {
+    const res = crearTarea(datos);
+    if (res.ok) {
+      setAbiertoNuevaTarea(false);
+      setAnuncioTarea('Tarea guardada');
+    }
+    return res;
+  };
 
   // Temporizador de progreso
   useEffect(() => {
@@ -369,12 +388,26 @@ export function PantallaEscritorio({
 
           <FranjaPendientes
             pendientes={pendientes}
-            maximo={cupoDeTareas(usuario)}
+            maximo={cupoDeTareas(usuarioVigente)}
+            onNuevaTarea={usuarioVigente ? () => setAbiertoNuevaTarea(true) : undefined}
           />
+
+          <p className="sr-only" aria-live="polite">
+            {anuncioTarea}
+          </p>
 
           <ContenedorVentanas />
         </main>
       </div>
+
+      {usuarioVigente && (
+        <DialogoTarea
+          abierto={abiertoNuevaTarea}
+          usuario={usuarioVigente}
+          onGuardar={manejarCrearTarea}
+          onCancelar={() => setAbiertoNuevaTarea(false)}
+        />
+      )}
 
       <DialogoRechazoApp
         rechazo={ultimoRechazoApertura}

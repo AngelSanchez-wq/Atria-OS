@@ -5,6 +5,7 @@ import { useTareas } from '../../store/tareas';
 import { useVentanas } from '../../store/ventanas';
 import { useProcesos } from '../../store/procesos';
 import { useSesion } from '../../store/sesion';
+import { useUsuariosStore } from '../../store/usuarios';
 import { Usuario, Tarea } from '../../kernel/types';
 import { USUARIOS_SEMILLA } from '../../kernel/users/usuarios-semilla';
 
@@ -44,6 +45,7 @@ describe('PantallaEscritorio', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    useUsuariosStore.getState().restablecer();
     useSesion.setState({ usuario: USUARIOS_SEMILLA[0] });
     useTareas.setState({
       tareaActiva: null,
@@ -244,5 +246,41 @@ describe('PantallaEscritorio', () => {
       screen.getByText('No hay memoria disponible para tu perfil')
     ).toBeInTheDocument();
     expect(screen.getByText('Cierra una app para abrir otra.')).toBeInTheDocument();
+  });
+
+  it('muestra el cupo con los límites del usuario y mantiene foco y texto en Nueva tarea al avanzar el reloj', () => {
+    const usuarioConCupo5: Usuario = {
+      ...USUARIOS_SEMILLA[0],
+      limites: {
+        ...USUARIOS_SEMILLA[0].limites,
+        maxTareasActivas: 5,
+      },
+    };
+    useSesion.setState({ usuario: usuarioConCupo5 });
+    useUsuariosStore.setState({ usuarios: [usuarioConCupo5] });
+    useTareas.getState().empezar({ ...tarea1, minutos: 10 });
+
+    render(<PantallaEscritorio />);
+
+    expect(screen.getByText('Cupos 1 de 5')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Nueva tarea' }));
+    });
+
+    const inputTitulo = screen.getByLabelText('Título');
+    expect(inputTitulo).toHaveFocus();
+
+    act(() => {
+      fireEvent.change(inputTitulo, { target: { value: 'Estudiar álgebra' } });
+    });
+
+    // Avanzar 3000 ms (3 ticks del temporizador del escritorio)
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(inputTitulo).toHaveFocus();
+    expect(inputTitulo).toHaveValue('Estudiar álgebra');
   });
 });

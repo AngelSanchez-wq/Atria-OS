@@ -19,6 +19,7 @@ vi.mock('framer-motion', async (importOriginal) => {
 
 describe('App', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.useFakeTimers();
     useNotificaciones.getState().reiniciar();
     useSesion.setState({
@@ -36,6 +37,9 @@ describe('App', () => {
       ultimaTerminada: null,
       enLogro: false,
       iniciada: false,
+      tareasPorUsuario: {},
+      inicializadas: {},
+      sugerenciaActualId: null,
     });
     useEnergia.setState({
       estado: 'encendiendo',

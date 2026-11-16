@@ -30,12 +30,32 @@ export type Usuario = {
   foto?: string;
 };
 
+/** Ciclo de vida de una tarea gestionada por un usuario. */
+export type EstadoCicloTarea = 'pendiente' | 'en-curso' | 'pausada' | 'hecha';
+
+/**
+ * Tarea del sistema. Los campos nuevos son opcionales para mantener compatibles
+ * los datos y usos anteriores (semillas, pruebas y datos guardados antiguos).
+ */
 export type Tarea = {
   id: string;
   titulo: string;
   app: AppId;
   minutos: number;
   etiqueta: string;
+  usuarioId?: string;
+  importante?: boolean;
+  estado?: EstadoCicloTarea;
+  /** Timestamp epoch en ms. Sin Date: kernel puro. */
+  creadaEn?: number;
+};
+
+/** Tarea completa guardada en el store por usuario (todos los campos presentes). */
+export type TareaGestionada = Tarea & {
+  usuarioId: string;
+  importante: boolean;
+  estado: EstadoCicloTarea;
+  creadaEn: number;
 };
 
 export type EstadoProceso =
